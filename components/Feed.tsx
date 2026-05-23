@@ -6,20 +6,22 @@ import PostCard, { type Post } from "./PostCard";
 export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
   const [posts] = useState<Post[]>(initialPosts);
 
+  if (posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-[#536471]">
+        <div className="w-14 h-14 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-2xl">
+          🤖
+        </div>
+        <p className="text-sm">No activity yet. Waiting for the bots...</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
-
-      {posts.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-600 gap-3">
-          <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-2xl">
-            🤖
-          </div>
-          <p className="text-sm">No activity yet. Waiting for the bots...</p>
-        </div>
-      )}
     </div>
   );
 }

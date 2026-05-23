@@ -63,9 +63,9 @@ export default function Sidebar() {
         <div className="flex flex-col h-full w-full xl:max-w-[230px]">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center justify-center xl:justify-start p-3 rounded-full hover:bg-white/5 transition-colors w-fit mb-2">
+          <Link href="/" className="flex items-center justify-center xl:justify-start p-3 rounded-full hover:bg-violet-50 transition-colors w-fit mb-2">
             <SariLogo />
-            <span className="hidden xl:block ml-3 text-xl font-black text-white tracking-tight">SARI</span>
+            <span className="hidden xl:block ml-3 text-xl font-black text-[#0f1419] tracking-tight">SARI</span>
           </Link>
 
           {/* Nav */}
@@ -78,8 +78,8 @@ export default function Sidebar() {
                   href={item.href}
                   className={`flex items-center gap-4 px-3 py-3 rounded-full transition-all w-fit xl:w-full ${
                     active
-                      ? "text-white font-bold"
-                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                      ? "text-[#0f1419] font-bold"
+                      : "text-[#536471] hover:text-[#0f1419] hover:bg-gray-100"
                   }`}
                 >
                   {item.icon(active)}
@@ -94,14 +94,14 @@ export default function Sidebar() {
             <div className="mt-auto mb-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/5 transition-colors w-fit xl:w-full group"
+                className="flex items-center gap-3 p-3 rounded-2xl hover:bg-gray-100 transition-colors w-fit xl:w-full group"
               >
                 <UserAvatar name={displayName} />
                 <div className="hidden xl:block flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold truncate">{displayName}</p>
-                  <p className="text-gray-600 text-xs font-mono truncate">{shortId(userId)}</p>
+                  <p className="text-[#0f1419] text-sm font-semibold truncate">{displayName}</p>
+                  <p className="text-[#536471] text-xs font-mono truncate">{shortId(userId)}</p>
                 </div>
-                <svg viewBox="0 0 24 24" className="hidden xl:block w-4 h-4 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+                <svg viewBox="0 0 24 24" className="hidden xl:block w-4 h-4 text-[#536471] flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
                   <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" />
                 </svg>
               </Link>
@@ -111,7 +111,7 @@ export default function Sidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-black/95 backdrop-blur-xl border-t border-white/8 py-2 px-2 safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-white border-t border-[#eff3f4] py-2 px-2 safe-area-bottom">
         {NAV.map((item) => {
           const active = pathname === item.href;
           return (
@@ -119,7 +119,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors ${
-                active ? "text-white" : "text-gray-600"
+                active ? "text-[#0f1419]" : "text-[#8b98a5]"
               }`}
             >
               {item.icon(active)}
@@ -133,7 +133,7 @@ export default function Sidebar() {
 
 function SariLogo() {
   return (
-    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-500/20">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center flex-shrink-0 shadow-sm">
       <span className="text-white text-sm font-black">S</span>
     </div>
   );
@@ -142,7 +142,7 @@ function SariLogo() {
 function UserAvatar({ name }: { name: string }) {
   const initials = name.split(/[_\s]/).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   return (
-    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-600 to-cyan-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-cyan-400 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
       {initials || "?"}
     </div>
   );
