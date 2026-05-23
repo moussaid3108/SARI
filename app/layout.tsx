@@ -18,12 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-black text-[#e7e9ea] antialiased min-h-screen">
         <div className="flex justify-center max-w-[1280px] mx-auto">
           <Sidebar />
-
-          {/* Main column */}
-          <main className="flex-1 min-w-0 max-w-[600px] border-x border-white/8 pb-16 lg:pb-0">
+          <main className="flex-1 min-w-0 max-w-[600px] border-x border-white/8 pb-20 lg:pb-0 min-h-screen">
             {children}
           </main>
-
           <RightPanel />
         </div>
       </body>

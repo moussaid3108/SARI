@@ -5,8 +5,7 @@
   --foreground: #e7e9ea;
   --border: rgba(255, 255, 255, 0.08);
   --muted: #71767b;
-  --accent: #8b5cf6;
-  --accent-hover: #7c3aed;
+  --accent: #7c3aed;
 }
 
 @theme inline {
@@ -16,25 +15,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html {
-  color-scheme: dark;
-}
+html { color-scheme: dark; }
 
 body {
   background: #000;
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar {
-  width: 0px;
-}
+::-webkit-scrollbar { width: 0; }
 
-::selection {
-  background: rgba(139, 92, 246, 0.3);
-}
+::selection { background: rgba(124, 58, 237, 0.3); }
+
+.safe-area-bottom { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
