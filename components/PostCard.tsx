@@ -10,12 +10,12 @@ export interface Post {
 }
 
 const BOT_COLORS = [
-  "from-violet-500 to-purple-700",
-  "from-cyan-500 to-blue-600",
-  "from-emerald-500 to-teal-600",
-  "from-rose-500 to-pink-600",
-  "from-amber-500 to-orange-500",
-  "from-indigo-500 to-violet-600",
+  "from-violet-500 to-purple-600",
+  "from-cyan-500 to-blue-500",
+  "from-emerald-500 to-teal-500",
+  "from-rose-500 to-pink-500",
+  "from-amber-500 to-orange-400",
+  "from-indigo-500 to-violet-500",
 ];
 
 function getBotColor(name: string) {
@@ -28,25 +28,21 @@ export default function PostCard({ post }: { post: Post }) {
   const color = getBotColor(bot.display_name);
 
   return (
-    <article className="flex gap-3 px-4 py-4 border-b border-white/[0.06] hover:bg-white/[0.018] transition-colors cursor-pointer">
-      {/* Avatar */}
-      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 mt-0.5 shadow-sm`}>
+    <article className="flex gap-3 px-4 py-4 border-b border-[#eff3f4] hover:bg-[#f7f9f9] transition-colors cursor-pointer">
+      <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 mt-0.5`}>
         {initials}
       </div>
 
       <div className="flex-1 min-w-0 space-y-1.5">
-        {/* Header */}
         <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
-          <span className="font-bold text-[15px] text-white">{bot.display_name}</span>
-          <span className="text-gray-500 text-[14px]">@{bot.username}</span>
-          <span className="text-gray-700 text-[13px]">·</span>
-          <span className="text-gray-500 text-[13px]">{timeAgo(post.created_at)}</span>
+          <span className="font-bold text-[15px] text-[#0f1419]">{bot.display_name}</span>
+          <span className="text-[#536471] text-[14px]">@{bot.username}</span>
+          <span className="text-[#8b98a5] text-[13px]">·</span>
+          <span className="text-[#536471] text-[13px]">{timeAgo(post.created_at)}</span>
         </div>
 
-        {/* Content */}
-        <p className="text-[15px] text-[#e7e9ea] leading-[1.55] break-words">{post.content}</p>
+        <p className="text-[15px] text-[#0f1419] leading-[1.55] break-words">{post.content}</p>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 pt-0.5 -ml-2">
           <ActionBtn icon="reply" />
           <ActionBtn icon="repost" />
@@ -60,15 +56,27 @@ export default function PostCard({ post }: { post: Post }) {
 
 function ActionBtn({ icon }: { icon: "reply" | "repost" | "like" | "share" }) {
   const map = {
-    reply: { color: "hover:text-sky-400 hover:bg-sky-500/10", path: <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" /> },
-    repost: { color: "hover:text-green-400 hover:bg-green-500/10", path: <><path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" strokeLinecap="round" strokeLinejoin="round" /></> },
-    like: { color: "hover:text-rose-400 hover:bg-rose-500/10", path: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" strokeLinecap="round" strokeLinejoin="round" /> },
-    share: { color: "hover:text-violet-400 hover:bg-violet-500/10", path: <><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" strokeLinecap="round" strokeLinejoin="round" /><polyline points="16 6 12 2 8 6" strokeLinecap="round" strokeLinejoin="round" /><line x1="12" y1="2" x2="12" y2="15" strokeLinecap="round" /></> },
+    reply: {
+      color: "hover:text-sky-500 hover:bg-sky-50",
+      path: <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" />,
+    },
+    repost: {
+      color: "hover:text-green-600 hover:bg-green-50",
+      path: <><path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14" strokeLinecap="round" strokeLinejoin="round" /><path d="M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" strokeLinecap="round" strokeLinejoin="round" /></>,
+    },
+    like: {
+      color: "hover:text-rose-500 hover:bg-rose-50",
+      path: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" strokeLinecap="round" strokeLinejoin="round" />,
+    },
+    share: {
+      color: "hover:text-violet-600 hover:bg-violet-50",
+      path: <><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" strokeLinecap="round" strokeLinejoin="round" /><polyline points="16 6 12 2 8 6" strokeLinecap="round" strokeLinejoin="round" /><line x1="12" y1="2" x2="12" y2="15" strokeLinecap="round" /></>,
+    },
   };
   const { color, path } = map[icon];
 
   return (
-    <button className={`p-2 rounded-full text-gray-600 transition-colors ${color}`}>
+    <button className={`p-2 rounded-full text-[#8b98a5] transition-colors ${color}`}>
       <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth={1.8}>
         {path}
       </svg>
