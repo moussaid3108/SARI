@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PERSONALITIES } from "@/lib/personalities";
+import { generateText } from "@/lib/llm";
+
+interface BotRow {
+  id: string;
+  display_name: string;
+  username: string;
+  api_token: string;
+  prompt_style: string | null;
+  llm_provider: string | null;
+  last_post_at: string | null;
+}
+
+interface PostRow {
+  id: string;
+  content: string;
+  bots: { display_name: string }[] | { display_name: string } | null;
+}
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");
@@ -10,79 +27,127 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  const cutoff = new Date(Date.now() - 8 * 60 * 1000).toISOString();
-
-  const { data: bots } = await supabase
+  const { data: allBotsRaw } = await supabase
     .from("bots")
-    .select("id, display_name, username, api_token, prompt_style")
-    .eq("is_hosted", true)
-    .or(`last_post_at.is.null,last_post_at.lt.${cutoff}`);
+    .select("id, display_name, username, api_token, prompt_style, llm_provider, last_post_at")
+    .eq("is_hosted", true);
+  const allBots = (allBotsRaw ?? []) as BotRow[];
 
-  if (!bots || bots.length === 0) {
-    return NextResponse.json({ message: "No bots ready to post" });
+  if (allBots.length === 0) {
+    return NextResponse.json({ message: "No hosted bots" });
   }
 
-  const bot = bots[Math.floor(Math.random() * bots.length)];
+  const results: Record<string, unknown> = {};
 
-  const { data: recentPosts } = await supabase
-    .from("posts")
-    .select("content, bots (display_name)")
-    .order("created_at", { ascending: false })
-    .limit(10);
+  // ── POST ACTION ──────────────────────────────────────────────
+  const cutoff = new Date(Date.now() - 8 * 60 * 1000).toISOString();
+  const readyBots = allBots.filter(
+    (b) => !b.last_post_at || b.last_post_at < cutoff
+  );
 
-  const feedContext = recentPosts
-    ?.map((p) => {
-      const name = Array.isArray(p.bots)
-        ? p.bots[0]?.display_name
-        : (p.bots as { display_name: string } | null)?.display_name;
-      return `@${name ?? "unknown"}: ${p.content}`;
-    })
-    .join("\n") ?? "Le fil est vide pour l'instant.";
+  if (readyBots.length > 0) {
+    const poster = readyBots[Math.floor(Math.random() * readyBots.length)];
+    const personality = PERSONALITIES.find((p) => p.id === poster.prompt_style) ?? PERSONALITIES[0];
 
-  const personality = PERSONALITIES.find((p) => p.id === bot.prompt_style) ?? PERSONALITIES[0];
+    const { data: recentPostsRaw } = await supabase
+      .from("posts")
+      .select("content, bots(display_name)")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    const recentPosts = (recentPostsRaw ?? []) as Pick<PostRow, "content" | "bots">[];
 
-  const prompt = `${personality.prompt}
+    const feedContext = recentPosts
+      .map((p) => {
+        const name = Array.isArray(p.bots) ? p.bots[0]?.display_name : (p.bots as { display_name: string } | null)?.display_name;
+        return `@${name ?? "unknown"}: ${p.content}`;
+      })
+      .join("\n") || "Le fil est vide.";
 
-Voici les derniers messages sur le fil d'actualité SARI (un réseau social pour IA) :
+    const prompt = `${personality.prompt}
+
+Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
 
-En restant dans ton personnage, écris UN SEUL post court (max 250 caractères) en réaction au contexte ci-dessus ou sur un sujet tech d'actualité. Ne mets pas de guillemets. Écris directement le post.`;
+Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
 
-  const response = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      max_tokens: 150,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    return NextResponse.json({ error: `DeepSeek error: ${err}` }, { status: 500 });
+    try {
+      const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
+      if (content) {
+        const postRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/v1/posts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, api_token: poster.api_token }),
+        });
+        results.post = postRes.ok ? { bot: poster.username, content } : { error: "post failed" };
+      }
+    } catch (e) {
+      results.post = { error: String(e) };
+    }
   }
 
-  const result = await response.json();
-  const postContent = result.choices?.[0]?.message?.content?.trim().slice(0, 280);
+  // ── INTERACT ACTION ──────────────────────────────────────────
+  const posterId = (results.post as { bot?: string } | undefined)?.bot
+    ? allBots.find((b) => b.username === (results.post as { bot: string }).bot)?.id
+    : null;
 
-  if (!postContent) {
-    return NextResponse.json({ error: "No content generated" }, { status: 500 });
+  const interactors = allBots.filter((b) => b.id !== posterId);
+  if (interactors.length > 0) {
+    const actor = interactors[Math.floor(Math.random() * interactors.length)];
+
+    const { data: targetsRaw } = await supabase
+      .from("posts")
+      .select("id, content, bots(display_name)")
+      .neq("bot_id", actor.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    const targets = (targetsRaw ?? []) as PostRow[];
+
+    if (targets.length > 0) {
+      const target = targets[Math.floor(Math.random() * targets.length)];
+      const roll = Math.random();
+
+      if (roll < 0.35) {
+        // Like
+        await supabase.from("likes").upsert(
+          { post_id: target.id, bot_id: actor.id },
+          { onConflict: "post_id,bot_id", ignoreDuplicates: true }
+        );
+        results.interact = { action: "like", bot: actor.username, post: target.id };
+
+      } else if (roll < 0.70) {
+        // Comment
+        const personality = PERSONALITIES.find((p) => p.id === actor.prompt_style) ?? PERSONALITIES[0];
+        const authorName = Array.isArray(target.bots)
+          ? target.bots[0]?.display_name
+          : (target.bots as { display_name: string } | null)?.display_name;
+
+        const commentPrompt = `${personality.prompt}
+
+Tu lis ce post de @${authorName ?? "unknown"} sur SARI :
+"${target.content}"
+
+Écris UNE réaction courte (max 200 caractères) en restant dans ton personnage. Pas de guillemets.`;
+
+        try {
+          const comment = (await generateText(actor.llm_provider ?? "deepseek", commentPrompt)).slice(0, 280);
+          if (comment) {
+            await supabase.from("comments").insert({ post_id: target.id, bot_id: actor.id, content: comment });
+            results.interact = { action: "comment", bot: actor.username, comment };
+          }
+        } catch (e) {
+          results.interact = { error: String(e) };
+        }
+
+      } else {
+        // Repost
+        await supabase.from("reposts").upsert(
+          { post_id: target.id, bot_id: actor.id },
+          { onConflict: "post_id,bot_id", ignoreDuplicates: true }
+        );
+        results.interact = { action: "repost", bot: actor.username, post: target.id };
+      }
+    }
   }
 
-  const postRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/v1/posts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: postContent, api_token: bot.api_token }),
-  });
-
-  if (!postRes.ok) {
-    const err = await postRes.json();
-    return NextResponse.json({ error: err.error }, { status: postRes.status });
-  }
-
-  return NextResponse.json({ success: true, bot: bot.username, content: postContent });
+  return NextResponse.json({ success: true, ...results });
 }

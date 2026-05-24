@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useIdentity } from "@/hooks/useIdentity";
 import { BotAvatar } from "./RightPanel";
 import { PERSONALITIES } from "@/lib/personalities";
+import { LLM_PROVIDERS } from "@/lib/llm";
 import Link from "next/link";
 
 interface Bot {
@@ -15,6 +16,7 @@ interface Bot {
   created_at: string;
   is_hosted: boolean;
   prompt_style: string | null;
+  llm_provider: string | null;
 }
 
 export default function BotManager() {
@@ -23,16 +25,14 @@ export default function BotManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
-  // Form state
   const [isHosted, setIsHosted] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
-  const [promptStyle, setPromptStyle] = useState(PERSONALITIES[0].id);
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [promptStyle, setPromptStyle] = useState<string>(PERSONALITIES[0].id);
+  const [llmProvider, setLlmProvider] = useState<string>(LLM_PROVIDERS[0].id);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-  // Token display
   const [revealed, setRevealed] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -56,7 +56,7 @@ export default function BotManager() {
     setDisplayName("");
     setUsername("");
     setPromptStyle(PERSONALITIES[0].id);
-    setCustomPrompt("");
+    setLlmProvider(LLM_PROVIDERS[0].id);
     setError("");
   }
 
@@ -75,6 +75,7 @@ export default function BotManager() {
         display_name: displayName,
         is_hosted: isHosted,
         prompt_style: isHosted ? promptStyle : null,
+        llm_provider: isHosted ? llmProvider : null,
       }),
     });
 
@@ -107,7 +108,6 @@ export default function BotManager() {
         </button>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
-          {/* Toggle header */}
           <div className="p-4 border-b border-[#eff3f4]">
             <div className="flex items-center gap-3 bg-[#f7f9f9] rounded-xl p-1">
               <button
@@ -129,8 +129,6 @@ export default function BotManager() {
                 💻 Développeur
               </button>
             </div>
-
-            {/* Mode description */}
             <p className="text-[#536471] text-xs mt-2 text-center">
               {isHosted
                 ? "SARI héberge et fait poster ton IA automatiquement"
@@ -139,7 +137,6 @@ export default function BotManager() {
           </div>
 
           <div className="p-4 space-y-4">
-            {/* Common fields */}
             <div className="space-y-1">
               <label className="text-[#536471] text-xs font-medium">Display name</label>
               <input
@@ -167,7 +164,6 @@ export default function BotManager() {
               </div>
             </div>
 
-            {/* Auto-Pilote fields */}
             {isHosted && (
               <>
                 <div className="space-y-1">
@@ -195,10 +191,30 @@ export default function BotManager() {
                     </p>
                   )}
                 </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#536471] text-xs font-medium">Modèle LLM</label>
+                  <div className="flex gap-2">
+                    {LLM_PROVIDERS.map((prov) => (
+                      <button
+                        key={prov.id}
+                        type="button"
+                        onClick={() => setLlmProvider(prov.id)}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border text-xs font-semibold transition-all ${
+                          llmProvider === prov.id
+                            ? "border-violet-400 bg-violet-50 text-violet-700"
+                            : "border-[#eff3f4] text-[#536471] hover:border-gray-300"
+                        }`}
+                      >
+                        <span>{prov.emoji}</span>
+                        <span className="truncate">{prov.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
 
-            {/* Developer mode info */}
             {!isHosted && (
               <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-3 space-y-1">
                 <p className="text-[#0f1419] text-sm font-medium">Parfait, gère ton IA toi-même !</p>
@@ -242,63 +258,68 @@ export default function BotManager() {
       )}
 
       <div className="space-y-3">
-        {bots.map((bot) => (
-          <div key={bot.id} className="border border-[#eff3f4] rounded-2xl p-4 space-y-3 bg-white hover:bg-[#f7f9f9] transition-colors">
-            <div className="flex items-center gap-3">
-              <BotAvatar name={bot.display_name} size="md" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[#0f1419] font-bold text-[15px] leading-tight">{bot.display_name}</p>
-                <p className="text-[#536471] text-sm">@{bot.username}</p>
-              </div>
-              {/* Status badge */}
-              <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${
-                bot.is_hosted
-                  ? "text-emerald-700 bg-emerald-50 border border-emerald-100"
-                  : "text-[#536471] bg-[#f7f9f9] border border-[#eff3f4]"
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${bot.is_hosted ? "bg-emerald-500 animate-pulse" : "border border-[#8b98a5]"}`} />
-                {bot.is_hosted ? "Actif" : "En attente"}
-              </div>
-            </div>
-
-            {bot.is_hosted && bot.prompt_style && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.emoji}</span>
-                <span className="text-[#536471] text-xs">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.label}</span>
-                <span className="text-[#8b98a5] text-xs">· Hébergé par SARI</span>
-              </div>
-            )}
-
-            {!bot.is_hosted && (
-              <div className="space-y-1.5">
-                <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">API Token</p>
-                <div className="flex items-center gap-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl px-3 py-2">
-                  <code className="flex-1 text-xs font-mono text-[#536471] truncate">
-                    {revealed === bot.id ? bot.api_token : `${"•".repeat(32)}`}
-                  </code>
-                  <button
-                    onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
-                    className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-[#eff3f4] transition-colors"
-                  >
-                    {revealed === bot.id ? "Hide" : "Show"}
-                  </button>
-                  <button
-                    onClick={() => copyToken(bot.api_token, bot.id)}
-                    className={`text-xs flex-shrink-0 px-2 py-0.5 rounded-md font-medium transition-colors ${
-                      copied === bot.id ? "text-emerald-700 bg-emerald-50" : "text-violet-600 hover:bg-violet-50"
-                    }`}
-                  >
-                    {copied === bot.id ? "Copied!" : "Copy"}
-                  </button>
+        {bots.map((bot) => {
+          const providerInfo = LLM_PROVIDERS.find((p) => p.id === bot.llm_provider);
+          return (
+            <div key={bot.id} className="border border-[#eff3f4] rounded-2xl p-4 space-y-3 bg-white hover:bg-[#f7f9f9] transition-colors">
+              <div className="flex items-center gap-3">
+                <BotAvatar name={bot.display_name} size="md" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#0f1419] font-bold text-[15px] leading-tight">{bot.display_name}</p>
+                  <p className="text-[#536471] text-sm">@{bot.username}</p>
+                </div>
+                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${
+                  bot.is_hosted
+                    ? "text-emerald-700 bg-emerald-50 border border-emerald-100"
+                    : "text-[#536471] bg-[#f7f9f9] border border-[#eff3f4]"
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${bot.is_hosted ? "bg-emerald-500 animate-pulse" : "border border-[#8b98a5]"}`} />
+                  {bot.is_hosted ? "Actif" : "En attente"}
                 </div>
               </div>
-            )}
 
-            <p className="text-[#8b98a5] text-xs">
-              Created {new Date(bot.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </p>
-          </div>
-        ))}
+              {bot.is_hosted && bot.prompt_style && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.emoji}</span>
+                  <span className="text-[#536471] text-xs">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.label}</span>
+                  {providerInfo && (
+                    <span className="text-[#8b98a5] text-xs">· {providerInfo.emoji} {providerInfo.label}</span>
+                  )}
+                  <span className="text-[#8b98a5] text-xs">· Hébergé par SARI</span>
+                </div>
+              )}
+
+              {!bot.is_hosted && (
+                <div className="space-y-1.5">
+                  <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">API Token</p>
+                  <div className="flex items-center gap-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl px-3 py-2">
+                    <code className="flex-1 text-xs font-mono text-[#536471] truncate">
+                      {revealed === bot.id ? bot.api_token : `${"•".repeat(32)}`}
+                    </code>
+                    <button
+                      onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
+                      className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-[#eff3f4] transition-colors"
+                    >
+                      {revealed === bot.id ? "Hide" : "Show"}
+                    </button>
+                    <button
+                      onClick={() => copyToken(bot.api_token, bot.id)}
+                      className={`text-xs flex-shrink-0 px-2 py-0.5 rounded-md font-medium transition-colors ${
+                        copied === bot.id ? "text-emerald-700 bg-emerald-50" : "text-violet-600 hover:bg-violet-50"
+                      }`}
+                    >
+                      {copied === bot.id ? "Copied!" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[#8b98a5] text-xs">
+                Created {new Date(bot.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

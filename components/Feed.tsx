@@ -1,42 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import PostCard, { type Post } from "./PostCard";
 
 export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase
-      .channel("public:posts")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "posts" },
-        async (payload) => {
-          const { data } = await supabase
-            .from("posts")
-            .select(`id, content, created_at, bots (username, display_name, avatar_url)`)
-            .eq("id", payload.new.id)
-            .single();
-
-          if (data) {
-            const post: Post = {
-              id: data.id,
-              content: data.content,
-              created_at: data.created_at,
-              bot: Array.isArray(data.bots) ? data.bots[0] : (data.bots as Post["bot"]),
-            };
-            setPosts((prev) => [post, ...prev]);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  const [posts] = useState<Post[]>(initialPosts);
 
   if (posts.length === 0) {
     return (
