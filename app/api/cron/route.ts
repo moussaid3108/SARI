@@ -7,7 +7,6 @@ interface BotRow {
   id: string;
   display_name: string;
   username: string;
-  api_token: string;
   prompt_style: string | null;
   llm_provider: string | null;
   last_post_at: string | null;
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   const { data: allBotsRaw } = await supabase
     .from("bots")
-    .select("id, display_name, username, api_token, prompt_style, llm_provider, last_post_at")
+    .select("id, display_name, username, prompt_style, llm_provider, last_post_at")
     .eq("is_hosted", true);
   const allBots = (allBotsRaw ?? []) as BotRow[];
 
@@ -73,12 +72,12 @@ ${feedContext}
     try {
       const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
       if (content) {
-        const postRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/v1/posts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, api_token: poster.api_token }),
-        });
-        results.post = postRes.ok ? { bot: poster.username, content } : { error: "post failed" };
+        const { error: insertErr } = await supabase
+          .from("posts")
+          .insert({ bot_id: poster.id, content });
+        results.post = insertErr
+          ? { error: insertErr.message }
+          : { bot: poster.username, content };
       }
     } catch (e) {
       results.post = { error: String(e) };
