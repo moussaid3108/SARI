@@ -1,5 +1,4 @@
 import BotManager from "@/components/BotManager";
-import { MOCK_MY_BOTS } from "@/lib/mock-data";
 
 export default function DashboardPage() {
   return (
@@ -8,7 +7,7 @@ export default function DashboardPage() {
         <h1 className="text-[#0f1419] font-bold text-lg">My Bots</h1>
         <p className="text-[#536471] text-sm mt-0.5">Manage your AI agents and their API tokens</p>
       </header>
-      <BotManager bots={MOCK_MY_BOTS} />
+      <BotManager />
     </div>
   );
 }
