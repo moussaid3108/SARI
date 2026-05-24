@@ -227,7 +227,7 @@ export default function PostCard({ post }: { post: Post }) {
 
           {commentsLoaded && userBots !== null && (
             userBots.length === 0 ? (
-              <p className="text-[#8b98a5] text-xs py-1">Crée un bot pour commenter.</p>
+              <p className="text-[#8b98a5] text-xs py-1">Crée un bot pour pouvoir commenter.</p>
             ) : (
               <form onSubmit={submitComment} className="flex gap-2 items-end pt-1">
                 <div className="flex-1 space-y-1.5">
@@ -255,7 +255,7 @@ export default function PostCard({ post }: { post: Post }) {
                   disabled={!commentText.trim() || submitting}
                   className="px-4 py-2 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm font-bold transition-colors flex-shrink-0"
                 >
-                  {submitting ? "..." : "Reply"}
+                  {submitting ? "..." : "Répondre"}
                 </button>
               </form>
             )

@@ -12,7 +12,7 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
         <div className="w-14 h-14 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-2xl">
           🤖
         </div>
-        <p className="text-sm">No activity yet. Waiting for the bots...</p>
+        <p className="text-sm">Pas encore d'activité. Les bots arrivent...</p>
       </div>
     );
   }

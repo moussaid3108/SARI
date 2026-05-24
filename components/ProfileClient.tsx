@@ -43,7 +43,7 @@ export default function ProfileClient() {
       setRestoreSuccess(true);
       setRestoreInput("");
     } else {
-      setRestoreError("Invalid ID. Expected format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+      setRestoreError("ID invalide. Format attendu : xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
     }
   }
 
@@ -61,15 +61,15 @@ export default function ProfileClient() {
           </div>
           <div>
             <p className="text-[#0f1419] font-bold text-base">{displayAs}</p>
-            <p className="text-[#536471] text-xs mt-0.5">Anonymous · No account needed</p>
+            <p className="text-[#536471] text-xs mt-0.5">Anonyme · Aucun compte requis</p>
           </div>
         </div>
 
         <div className="space-y-1.5">
           <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">
-            My anonymous ID{" "}
+            Mon ID anonyme{" "}
             <span className="text-[#8b98a5] normal-case font-normal tracking-normal">
-              (save it to restore your bots on another device)
+              (sauvegarde-le pour retrouver tes bots sur un autre appareil)
             </span>
           </p>
           <div className="flex items-center gap-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl px-4 py-3">
@@ -84,7 +84,7 @@ export default function ProfileClient() {
                   : "border-violet-200 text-violet-600 hover:bg-violet-50"
               }`}
             >
-              {copied ? "Copied!" : "Copy"}
+              {copied ? "Copié !" : "Copier"}
             </button>
           </div>
         </div>
@@ -93,27 +93,27 @@ export default function ProfileClient() {
       {/* Display name */}
       <div className="rounded-2xl border border-[#eff3f4] bg-white p-5 space-y-3">
         <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">
-          My nickname{" "}
-          <span className="text-[#8b98a5] normal-case font-normal tracking-normal">(optional)</span>
+          Mon pseudo{" "}
+          <span className="text-[#8b98a5] normal-case font-normal tracking-normal">(optionnel)</span>
         </p>
         <form onSubmit={handleSaveName} className="space-y-3">
           <input
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
             maxLength={30}
-            placeholder={identity.displayName ?? "Choose a nickname..."}
+            placeholder={identity.displayName ?? "Choisir un pseudo..."}
             className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-3 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
           />
           <button
             type="submit"
             className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-[0.98] transition-all text-white font-bold text-sm"
           >
-            {nameSaved ? "Saved ✓" : "Save"}
+            {nameSaved ? "Sauvegardé ✓" : "Sauvegarder"}
           </button>
         </form>
         {identity.displayName && (
           <p className="text-[#8b98a5] text-xs">
-            Displayed as:{" "}
+            Affiché comme :{" "}
             <span className="text-[#536471]">
               {identity.displayName} ({shortId(identity.userId)})
             </span>
@@ -123,9 +123,9 @@ export default function ProfileClient() {
 
       {/* Restore ID */}
       <div className="rounded-2xl border border-[#eff3f4] bg-white p-5 space-y-3">
-        <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">Restore my ID</p>
+        <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">Restaurer mon ID</p>
         <p className="text-[#536471] text-xs leading-relaxed">
-          Paste your ID from another device to recover your bots and settings.
+          Colle ton ID depuis un autre appareil pour retrouver tes bots et paramètres.
         </p>
         <form onSubmit={handleRestore} className="space-y-3">
           <input
@@ -135,13 +135,13 @@ export default function ProfileClient() {
             className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-3 text-sm font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
           />
           {restoreError && <p className="text-red-500 text-xs">{restoreError}</p>}
-          {restoreSuccess && <p className="text-emerald-600 text-xs">Identity restored successfully.</p>}
+          {restoreSuccess && <p className="text-emerald-600 text-xs">Identité restaurée avec succès.</p>}
           <button
             type="submit"
             disabled={!restoreInput.trim()}
             className="w-full py-3 rounded-xl border border-[#eff3f4] hover:bg-[#f7f9f9] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-[#0f1419] font-bold text-sm"
           >
-            Restore
+            Restaurer
           </button>
         </form>
       </div>

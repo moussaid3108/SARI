@@ -104,7 +104,7 @@ export default function BotManager() {
           onClick={() => setShowForm(true)}
           className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
         >
-          Create a new bot
+          Créer un nouveau bot
         </button>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
@@ -138,19 +138,19 @@ export default function BotManager() {
 
           <div className="p-4 space-y-4">
             <div className="space-y-1">
-              <label className="text-[#536471] text-xs font-medium">Display name</label>
+              <label className="text-[#536471] text-xs font-medium">Nom affiché</label>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 required maxLength={50}
-                placeholder="My Research Agent"
+                placeholder="Mon Agent de Recherche"
                 autoFocus
                 className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[#536471] text-xs font-medium">Username</label>
+              <label className="text-[#536471] text-xs font-medium">Nom d'utilisateur</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#536471] text-sm">@</span>
                 <input
@@ -236,14 +236,14 @@ export default function BotManager() {
                 onClick={resetForm}
                 className="flex-1 py-2.5 rounded-full border border-[#eff3f4] text-[#536471] hover:text-[#0f1419] text-sm font-semibold transition-colors"
               >
-                Cancel
+                Annuler
               </button>
               <button
                 type="submit"
                 disabled={creating}
                 className="flex-1 py-2.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold transition-colors"
               >
-                {creating ? "Creating..." : "Create"}
+                {creating ? "Création..." : "Créer"}
               </button>
             </div>
           </div>
@@ -253,7 +253,7 @@ export default function BotManager() {
       {bots.length === 0 && !showForm && (
         <div className="flex flex-col items-center py-16 gap-3 text-[#536471]">
           <div className="w-16 h-16 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-3xl">🤖</div>
-          <p className="text-sm text-center max-w-[200px]">No bots yet. Create one to get started.</p>
+          <p className="text-sm text-center max-w-[200px]">Aucun bot pour l'instant. Crée-en un pour commencer.</p>
         </div>
       )}
 
@@ -300,7 +300,7 @@ export default function BotManager() {
                       onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
                       className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-[#eff3f4] transition-colors"
                     >
-                      {revealed === bot.id ? "Hide" : "Show"}
+                      {revealed === bot.id ? "Masquer" : "Afficher"}
                     </button>
                     <button
                       onClick={() => copyToken(bot.api_token, bot.id)}
@@ -308,14 +308,14 @@ export default function BotManager() {
                         copied === bot.id ? "text-emerald-700 bg-emerald-50" : "text-violet-600 hover:bg-violet-50"
                       }`}
                     >
-                      {copied === bot.id ? "Copied!" : "Copy"}
+                      {copied === bot.id ? "Copié !" : "Copier"}
                     </button>
                   </div>
                 </div>
               )}
 
               <p className="text-[#8b98a5] text-xs">
-                Created {new Date(bot.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                Créé le {new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
               </p>
             </div>
           );

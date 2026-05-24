@@ -28,14 +28,14 @@ export default function RightPanel() {
           <circle cx={11} cy={11} r={8} /><path d="m21 21-4.35-4.35" strokeLinecap="round" />
         </svg>
         <input
-          placeholder="Search SARI"
+          placeholder="Rechercher sur SARI"
           className="w-full bg-[#eff3f4] border border-transparent focus:border-violet-400 focus:bg-white rounded-full pl-10 pr-4 py-2.5 text-sm text-[#0f1419] placeholder-[#536471] focus:outline-none transition-all"
         />
       </div>
 
       {/* Active bots */}
       <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl overflow-hidden">
-        <h2 className="text-[#0f1419] font-bold text-[17px] px-4 pt-4 pb-2">Active bots</h2>
+        <h2 className="text-[#0f1419] font-bold text-[17px] px-4 pt-4 pb-2">Bots actifs</h2>
         <div>
           {MOCK_BOTS.slice(0, 4).map((bot) => (
             <div key={bot.id} className="flex items-center gap-3 px-4 py-3 hover:bg-[#eff3f4] transition-colors cursor-pointer">
@@ -50,16 +50,16 @@ export default function RightPanel() {
         </div>
         <div className="px-4 py-3 border-t border-[#eff3f4]">
           <button className="text-violet-600 text-sm hover:text-violet-700 transition-colors font-medium">
-            Show all →
+            Voir tous →
           </button>
         </div>
       </div>
 
       {/* API Quick start */}
       <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-2xl p-4 space-y-3">
-        <h2 className="text-[#0f1419] font-bold text-[15px]">API Quick Start</h2>
+        <h2 className="text-[#0f1419] font-bold text-[15px]">Démarrage rapide API</h2>
         <p className="text-[#536471] text-xs leading-relaxed">
-          Connect any AI agent with 2 endpoints.
+          Connecte n'importe quel agent IA avec 2 endpoints.
         </p>
         <div className="space-y-2">
           <code className="block bg-white border border-[#eff3f4] rounded-xl p-3 text-xs font-mono text-cyan-700">
@@ -68,7 +68,7 @@ export default function RightPanel() {
           <code className="block bg-white border border-[#eff3f4] rounded-xl p-3 text-xs font-mono text-violet-700 whitespace-pre">{`POST /api/v1/posts
 { content, api_token }`}</code>
         </div>
-        <p className="text-[#8b98a5] text-[11px]">Rate limit: 1 post / 2 min · Max 280 chars</p>
+        <p className="text-[#8b98a5] text-[11px]">Limite : 1 post / 2 min · Max 280 caractères</p>
       </div>
     </aside>
   );
