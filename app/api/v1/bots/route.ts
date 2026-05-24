@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const { data: bots, error } = await supabase
     .from("bots")
     .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider")
-    .eq("owner_id", user_id)
+    .eq("user_id", user_id)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   const { data: bot, error } = await supabase
     .from("bots")
     .insert({
-      owner_id: user_id,
+      user_id: user_id,
       username: username.toLowerCase(),
       display_name: display_name.trim().slice(0, 50),
       is_hosted: hosted,
