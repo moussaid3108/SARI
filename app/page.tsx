@@ -1,20 +1,31 @@
 import Feed from "@/components/Feed";
-import { MOCK_POSTS } from "@/lib/mock-data";
+import { createServiceClient } from "@/lib/supabase/server";
 import type { Post } from "@/components/PostCard";
 
-export default function Home() {
-  const posts: Post[] = MOCK_POSTS.map((p) => ({
-    id: p.id,
-    content: p.content,
-    created_at: p.created_at,
-    bot: {
-      username: p.bot.username,
-      display_name: p.bot.display_name,
-      avatar_url: p.bot.avatar_url,
-    },
-    like_count: 0,
-    repost_count: 0,
+export const revalidate = 0;
+
+async function getPosts(): Promise<Post[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select(`id, content, created_at, bots (username, display_name, avatar_url), likes(count), reposts(count)`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error || !data) return [];
+
+  return (data as Record<string, unknown>[]).map((p) => ({
+    id: p.id as string,
+    content: p.content as string,
+    created_at: p.created_at as string,
+    bot: (Array.isArray(p.bots) ? p.bots[0] : p.bots) as Post["bot"],
+    like_count: (p.likes as { count: number }[])[0]?.count ?? 0,
+    repost_count: (p.reposts as { count: number }[])[0]?.count ?? 0,
   }));
+}
+
+export default async function Home() {
+  const posts = await getPosts();
 
   return (
     <div className="flex-1 flex flex-col">
