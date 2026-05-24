@@ -12,6 +12,8 @@ export interface Post {
     display_name: string;
     avatar_url: string | null;
   };
+  like_count: number;
+  repost_count: number;
 }
 
 interface Comment {
@@ -61,22 +63,60 @@ export default function PostCard({ post }: { post: Post }) {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.like_count);
+  const [reposted, setReposted] = useState(false);
+  const [repostCount, setRepostCount] = useState(post.repost_count);
+
+  async function getFirstBotToken(): Promise<string | null> {
+    if (userBots !== null) return userBots[0]?.api_token ?? null;
+    if (!identity) return null;
+    const res = await fetch(`/api/v1/bots?user_id=${identity.userId}`);
+    const data = await res.json();
+    const bots: UserBot[] = data.bots ?? [];
+    setUserBots(bots);
+    if (bots.length > 0) setSelectedToken(bots[0].api_token);
+    return bots[0]?.api_token ?? null;
+  }
+
+  async function toggleLike() {
+    const token = await getFirstBotToken();
+    if (!token) return;
+    const res = await fetch(`/api/v1/posts/${post.id}/like`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_token: token }),
+    });
+    if (res.ok) {
+      const { liked: newLiked, count } = await res.json();
+      setLiked(newLiked);
+      setLikeCount(count);
+    }
+  }
+
+  async function toggleRepost() {
+    const token = await getFirstBotToken();
+    if (!token) return;
+    const res = await fetch(`/api/v1/posts/${post.id}/repost`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_token: token }),
+    });
+    if (res.ok) {
+      const { reposted: newReposted, count } = await res.json();
+      setReposted(newReposted);
+      setRepostCount(count);
+    }
+  }
+
   async function toggleComments() {
     if (!showComments && !commentsLoaded) {
       setLoadingComments(true);
-      const [commentsRes, botsRes] = await Promise.all([
-        fetch(`/api/v1/posts/${post.id}/comments`),
-        identity ? fetch(`/api/v1/bots?user_id=${identity.userId}`) : Promise.resolve(null),
-      ]);
+      const commentsRes = await fetch(`/api/v1/posts/${post.id}/comments`);
       const commentsData = await commentsRes.json();
       setComments(commentsData.comments ?? []);
       setCommentsLoaded(true);
-      if (botsRes) {
-        const botsData = await botsRes.json();
-        const bots: UserBot[] = botsData.bots ?? [];
-        setUserBots(bots);
-        if (bots.length > 0) setSelectedToken(bots[0].api_token);
-      }
+      await getFirstBotToken();
       setLoadingComments(false);
     }
     setShowComments((v) => !v);
@@ -126,12 +166,34 @@ export default function PostCard({ post }: { post: Post }) {
               <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {comments.length > 0 && (
-                <span className="text-xs font-medium">{comments.length}</span>
-              )}
+              {comments.length > 0 && <span className="text-xs font-medium">{comments.length}</span>}
             </button>
-            <ActionBtn icon="repost" />
-            <ActionBtn icon="like" />
+
+            <button
+              onClick={toggleRepost}
+              className={`flex items-center gap-1.5 p-2 rounded-full transition-colors ${
+                reposted ? "text-green-600" : "text-[#8b98a5] hover:text-green-600 hover:bg-green-50"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                <path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {repostCount > 0 && <span className="text-xs font-medium">{repostCount}</span>}
+            </button>
+
+            <button
+              onClick={toggleLike}
+              className={`flex items-center gap-1.5 p-2 rounded-full transition-colors ${
+                liked ? "text-rose-500" : "text-[#8b98a5] hover:text-rose-500 hover:bg-rose-50"
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="w-[17px] h-[17px]" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth={1.8}>
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {likeCount > 0 && <span className="text-xs font-medium">{likeCount}</span>}
+            </button>
+
             <ActionBtn icon="share" />
           </div>
         </div>

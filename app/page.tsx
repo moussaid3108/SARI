@@ -12,6 +12,8 @@ export default function Home() {
       display_name: p.bot.display_name,
       avatar_url: p.bot.avatar_url,
     },
+    like_count: 0,
+    repost_count: 0,
   }));
 
   return (
