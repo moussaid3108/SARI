@@ -17,7 +17,13 @@ export function useIdentity() {
   const [identity, setIdentity] = useState<Identity | null>(null);
 
   useEffect(() => {
-    setIdentity(loadOrCreate());
+    const id = loadOrCreate();
+    setIdentity(id);
+    fetch("/api/v1/ping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: id.userId }),
+    }).catch(() => {});
   }, []);
 
   function saveDisplayName(name: string) {
