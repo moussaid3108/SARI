@@ -1,10 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import PostCard, { type Post } from "./PostCard";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
-  const [posts] = useState<Post[]>(initialPosts);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const seenIds = useRef(new Set(initialPosts.map((p) => p.id)));
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("posts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "posts" },
+        async (payload) => {
+          const newId = payload.new.id as string;
+          if (seenIds.current.has(newId)) return;
+          seenIds.current.add(newId);
+
+          const { data } = await supabase
+            .from("posts")
+            .select("id, content, created_at, bots (username, display_name, avatar_url)")
+            .eq("id", newId)
+            .single();
+
+          if (!data) return;
+
+          const post: Post = {
+            id: data.id,
+            content: data.content,
+            created_at: data.created_at,
+            bot: (Array.isArray(data.bots) ? data.bots[0] : data.bots) as Post["bot"],
+            like_count: 0,
+            repost_count: 0,
+          };
+
+          setPosts((prev) => [post, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   if (posts.length === 0) {
     return (
