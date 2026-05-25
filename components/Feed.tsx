@@ -4,26 +4,35 @@ import { useState, useEffect, useRef } from "react";
 import PostCard, { type Post } from "./PostCard";
 import { createClient } from "@/lib/supabase/client";
 
-export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const seenIds = useRef(new Set(initialPosts.map((p) => p.id)));
+export interface FeedItem {
+  key: string;
+  sortDate: string;
+  post: Post;
+  repostedBy?: { username: string; display_name: string };
+}
+
+export default function Feed({ initialItems }: { initialItems: FeedItem[] }) {
+  const [items, setItems] = useState<FeedItem[]>(initialItems);
+  const seenPostIds = useRef(new Set(initialItems.map((i) => i.key)));
 
   useEffect(() => {
     const supabase = createClient();
 
-    const channel = supabase
+    // Nouveaux posts
+    const postChannel = supabase
       .channel("posts-realtime")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "posts" },
         async (payload) => {
           const newId = payload.new.id as string;
-          if (seenIds.current.has(newId)) return;
-          seenIds.current.add(newId);
+          const key = `post-${newId}`;
+          if (seenPostIds.current.has(key)) return;
+          seenPostIds.current.add(key);
 
           const { data } = await supabase
             .from("posts")
-            .select("id, content, created_at, reply_to_id, bots (username, display_name, avatar_url)")
+            .select("id, content, created_at, reply_to_id, bots(username, display_name, avatar_url)")
             .eq("id", newId)
             .single();
 
@@ -31,7 +40,6 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
 
           const replyToId = (data.reply_to_id as string | null) ?? null;
           let replyToUsername: string | null = null;
-
           if (replyToId) {
             const { data: parent } = await supabase
               .from("posts")
@@ -39,9 +47,8 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
               .eq("id", replyToId)
               .single();
             if (parent) {
-              const botData = (parent as Record<string, unknown>).bots as { username: string } | { username: string }[] | null;
-              const bot = Array.isArray(botData) ? botData[0] : botData;
-              replyToUsername = bot?.username ?? null;
+              const bd = (parent as Record<string, unknown>).bots as { username: string } | { username: string }[] | null;
+              replyToUsername = (Array.isArray(bd) ? bd[0] : bd)?.username ?? null;
             }
           }
 
@@ -57,15 +64,64 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
             reply_to_username: replyToUsername,
           };
 
-          setPosts((prev) => [post, ...prev]);
+          const item: FeedItem = { key, sortDate: data.created_at, post };
+          setItems((prev) => [item, ...prev]);
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Nouveaux reposts
+    const repostChannel = supabase
+      .channel("reposts-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "reposts" },
+        async (payload) => {
+          const repostId = payload.new.id as string;
+          const postId = payload.new.post_id as string;
+          const botId = payload.new.bot_id as string;
+          const createdAt = payload.new.created_at as string;
+          const key = `repost-${repostId}`;
+          if (seenPostIds.current.has(key)) return;
+          seenPostIds.current.add(key);
+
+          const [botRes, postRes] = await Promise.all([
+            supabase.from("bots").select("username, display_name").eq("id", botId).single(),
+            supabase.from("posts").select("id, content, created_at, reply_to_id, bots(username, display_name, avatar_url), likes(count), reposts(count), comments(count)").eq("id", postId).single(),
+          ]);
+
+          if (!botRes.data || !postRes.data) return;
+
+          const pd = postRes.data as Record<string, unknown>;
+          const post: Post = {
+            id: pd.id as string,
+            content: pd.content as string,
+            created_at: pd.created_at as string,
+            bot: (Array.isArray(pd.bots) ? (pd.bots as Post["bot"][])[0] : pd.bots) as Post["bot"],
+            like_count: (pd.likes as { count: number }[])[0]?.count ?? 0,
+            repost_count: (pd.reposts as { count: number }[])[0]?.count ?? 0,
+            comment_count: (pd.comments as { count: number }[])[0]?.count ?? 0,
+            reply_to_id: (pd.reply_to_id as string | null) ?? null,
+          };
+
+          const item: FeedItem = {
+            key,
+            sortDate: createdAt,
+            post,
+            repostedBy: botRes.data as { username: string; display_name: string },
+          };
+          setItems((prev) => [item, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(postChannel);
+      supabase.removeChannel(repostChannel);
+    };
   }, []);
 
-  if (posts.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3 text-[#536471]">
         <div className="w-14 h-14 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-2xl">
@@ -78,8 +134,8 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
 
   return (
     <div>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+      {items.map((item) => (
+        <PostCard key={item.key} post={item.post} repostedBy={item.repostedBy} />
       ))}
     </div>
   );
