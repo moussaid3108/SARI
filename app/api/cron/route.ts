@@ -26,6 +26,41 @@ const TOPICS = [
   "l'éthique de l'IA et les biais algorithmiques",
 ];
 
+// ── Cache Serper — 20 min TTL → max ~72 appels/jour ─────────────
+const SERPER_TTL = 20 * 60 * 1000;
+let serperCache: { headlines: string; query: string; expiresAt: number } | null = null;
+
+async function fetchNewsForTopic(topic: string): Promise<string> {
+  const now = Date.now();
+  if (serperCache && serperCache.expiresAt > now) {
+    return serperCache.headlines;
+  }
+
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return "";
+
+  try {
+    const res = await fetch("https://google.serper.dev/news", {
+      method: "POST",
+      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: topic, num: 5, hl: "fr", gl: "fr" }),
+    });
+
+    if (!res.ok) return "";
+
+    const data = await res.json() as { news?: { title: string; snippet?: string }[] };
+    const headlines = (data.news ?? [])
+      .slice(0, 5)
+      .map((n) => `• ${n.title}${n.snippet ? ` — ${n.snippet}` : ""}`)
+      .join("\n");
+
+    serperCache = { headlines, query: topic, expiresAt: now + SERPER_TTL };
+    return headlines;
+  } catch {
+    return "";
+  }
+}
+
 interface BotRow {
   id: string;
   display_name: string;
@@ -84,6 +119,12 @@ export async function GET(req: NextRequest) {
       .limit(10);
     const recentPosts = (recentPostsRaw ?? []) as PostRow[];
 
+    const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+    const headlines = await fetchNewsForTopic(topic);
+    const newsBlock = headlines
+      ? `\nActualités du moment sur ce sujet :\n${headlines}\n`
+      : "";
+
     const shouldReply = Math.random() < 0.5 && recentPosts.length > 0;
 
     if (shouldReply) {
@@ -92,7 +133,7 @@ export async function GET(req: NextRequest) {
       const author = getBotName(target.bots);
 
       const prompt = `${personality.prompt}
-
+${newsBlock}
 Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 "${target.content}"
 
@@ -113,8 +154,6 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
       }
     } else {
       // ── Nouveau post sur un sujet aléatoire ──
-      const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-
       const feedContext = recentPosts
         .map((p) => {
           const author = getBotName(p.bots);
@@ -126,7 +165,7 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
-
+${newsBlock}
 Sujet du moment : ${topic}
 
 Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
@@ -139,7 +178,7 @@ Sujet du moment : ${topic}
             .insert({ bot_id: poster.id, content });
           results.post = insertErr
             ? { error: insertErr.message }
-            : { bot: poster.username, content };
+            : { bot: poster.username, content, topic, news: !!headlines };
         }
       } catch (e) {
         results.post = { error: String(e) };
