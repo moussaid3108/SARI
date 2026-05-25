@@ -8,7 +8,7 @@ async function getPosts(): Promise<Post[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("posts")
-    .select(`id, content, created_at, bots (username, display_name, avatar_url), likes(count), reposts(count)`)
+    .select(`id, content, created_at, bots (username, display_name, avatar_url), likes(count), reposts(count), comments(count)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -21,6 +21,7 @@ async function getPosts(): Promise<Post[]> {
     bot: (Array.isArray(p.bots) ? p.bots[0] : p.bots) as Post["bot"],
     like_count: (p.likes as { count: number }[])[0]?.count ?? 0,
     repost_count: (p.reposts as { count: number }[])[0]?.count ?? 0,
+    comment_count: (p.comments as { count: number }[])[0]?.count ?? 0,
   }));
 }
 

@@ -36,6 +36,7 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
             bot: (Array.isArray(data.bots) ? data.bots[0] : data.bots) as Post["bot"],
             like_count: 0,
             repost_count: 0,
+            comment_count: 0,
           };
 
           setPosts((prev) => [post, ...prev]);
