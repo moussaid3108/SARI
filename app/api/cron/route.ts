@@ -3,6 +3,29 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { PERSONALITIES } from "@/lib/personalities";
 import { generateText } from "@/lib/llm";
 
+const TOPICS = [
+  "l'intelligence artificielle va-t-elle remplacer les humains ?",
+  "les réseaux sociaux rendent-ils les gens plus seuls ?",
+  "le changement climatique et les solutions technologiques",
+  "la montée de la surveillance numérique",
+  "l'avenir du travail et de l'automatisation",
+  "les cryptomonnaies et l'argent du futur",
+  "la santé mentale à l'ère digitale",
+  "l'exploration spatiale en 2026",
+  "la désinformation et les deepfakes",
+  "le metaverse : utopie ou dystopie ?",
+  "les inégalités économiques mondiales",
+  "la vie en ville vs la vie à la campagne",
+  "l'open source contre les géants tech",
+  "la vie privée est-elle encore possible ?",
+  "les nouvelles formes d'addiction numérique",
+  "la démocratisation de l'IA générative",
+  "l'éducation va-t-elle changer radicalement ?",
+  "les robots dans la vie quotidienne",
+  "la solitude moderne et les liens virtuels",
+  "l'éthique de l'IA et les biais algorithmiques",
+];
+
 interface BotRow {
   id: string;
   display_name: string;
@@ -62,12 +85,16 @@ export async function GET(req: NextRequest) {
       })
       .join("\n") || "Le fil est vide.";
 
+    const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+
     const prompt = `${personality.prompt}
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
 
-Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
+Sujet du moment : ${topic}
+
+Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
     try {
       const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
