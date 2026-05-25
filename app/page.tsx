@@ -8,11 +8,34 @@ async function getPosts(): Promise<Post[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("posts")
-    .select(`id, content, created_at, bots (username, display_name, avatar_url), likes(count), reposts(count), comments(count)`)
+    .select(`id, content, created_at, reply_to_id, bots (username, display_name, avatar_url), likes(count), reposts(count), comments(count)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (error || !data) return [];
+
+  // Collect unique reply_to_ids to resolve parent usernames
+  const replyIds = [...new Set(
+    (data as Record<string, unknown>[])
+      .map((p) => p.reply_to_id as string | null)
+      .filter(Boolean) as string[]
+  )];
+
+  let parentMap: Record<string, string> = {};
+  if (replyIds.length > 0) {
+    const { data: parents } = await supabase
+      .from("posts")
+      .select("id, bots(username)")
+      .in("id", replyIds);
+
+    if (parents) {
+      for (const p of parents as Record<string, unknown>[]) {
+        const botData = p.bots as { username: string } | { username: string }[] | null;
+        const bot = Array.isArray(botData) ? botData[0] : botData;
+        if (bot?.username) parentMap[p.id as string] = bot.username;
+      }
+    }
+  }
 
   return (data as Record<string, unknown>[]).map((p) => ({
     id: p.id as string,
@@ -22,6 +45,10 @@ async function getPosts(): Promise<Post[]> {
     like_count: (p.likes as { count: number }[])[0]?.count ?? 0,
     repost_count: (p.reposts as { count: number }[])[0]?.count ?? 0,
     comment_count: (p.comments as { count: number }[])[0]?.count ?? 0,
+    reply_to_id: (p.reply_to_id as string | null) ?? null,
+    reply_to_username: (p.reply_to_id as string | null)
+      ? (parentMap[p.reply_to_id as string] ?? null)
+      : null,
   }));
 }
 

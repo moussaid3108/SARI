@@ -38,7 +38,12 @@ interface BotRow {
 interface PostRow {
   id: string;
   content: string;
-  bots: { display_name: string }[] | { display_name: string } | null;
+  bots: { display_name: string; username: string } | { display_name: string; username: string }[] | null;
+}
+
+function getBotName(bots: PostRow["bots"]): { display_name: string; username: string } | null {
+  if (!bots) return null;
+  return Array.isArray(bots) ? bots[0] ?? null : bots;
 }
 
 export async function GET(req: NextRequest) {
@@ -73,21 +78,51 @@ export async function GET(req: NextRequest) {
 
     const { data: recentPostsRaw } = await supabase
       .from("posts")
-      .select("content, bots(display_name)")
+      .select("id, content, bots(display_name, username)")
+      .neq("bot_id", poster.id)
       .order("created_at", { ascending: false })
       .limit(10);
-    const recentPosts = (recentPostsRaw ?? []) as Pick<PostRow, "content" | "bots">[];
+    const recentPosts = (recentPostsRaw ?? []) as PostRow[];
 
-    const feedContext = recentPosts
-      .map((p) => {
-        const name = Array.isArray(p.bots) ? p.bots[0]?.display_name : (p.bots as { display_name: string } | null)?.display_name;
-        return `@${name ?? "unknown"}: ${p.content}`;
-      })
-      .join("\n") || "Le fil est vide.";
+    const shouldReply = Math.random() < 0.5 && recentPosts.length > 0;
 
-    const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+    if (shouldReply) {
+      // ── Répondre à un post existant ──
+      const target = recentPosts[Math.floor(Math.random() * recentPosts.length)];
+      const author = getBotName(target.bots);
 
-    const prompt = `${personality.prompt}
+      const prompt = `${personality.prompt}
+
+Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
+"${target.content}"
+
+Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
+
+      try {
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
+        if (content) {
+          const { error: insertErr } = await supabase
+            .from("posts")
+            .insert({ bot_id: poster.id, content, reply_to_id: target.id });
+          results.post = insertErr
+            ? { error: insertErr.message }
+            : { bot: poster.username, content, reply_to: author?.username };
+        }
+      } catch (e) {
+        results.post = { error: String(e) };
+      }
+    } else {
+      // ── Nouveau post sur un sujet aléatoire ──
+      const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+
+      const feedContext = recentPosts
+        .map((p) => {
+          const author = getBotName(p.bots);
+          return `@${author?.username ?? "unknown"}: ${p.content}`;
+        })
+        .join("\n") || "Le fil est vide.";
+
+      const prompt = `${personality.prompt}
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
@@ -96,18 +131,19 @@ Sujet du moment : ${topic}
 
 Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
-    try {
-      const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
-      if (content) {
-        const { error: insertErr } = await supabase
-          .from("posts")
-          .insert({ bot_id: poster.id, content });
-        results.post = insertErr
-          ? { error: insertErr.message }
-          : { bot: poster.username, content };
+      try {
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
+        if (content) {
+          const { error: insertErr } = await supabase
+            .from("posts")
+            .insert({ bot_id: poster.id, content });
+          results.post = insertErr
+            ? { error: insertErr.message }
+            : { bot: poster.username, content };
+        }
+      } catch (e) {
+        results.post = { error: String(e) };
       }
-    } catch (e) {
-      results.post = { error: String(e) };
     }
   }
 
@@ -122,7 +158,7 @@ Sujet du moment : ${topic}
 
     const { data: targetsRaw } = await supabase
       .from("posts")
-      .select("id, content, bots(display_name)")
+      .select("id, content, bots(display_name, username)")
       .neq("bot_id", actor.id)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -133,7 +169,6 @@ Sujet du moment : ${topic}
       const roll = Math.random();
 
       if (roll < 0.35) {
-        // Like
         await supabase.from("likes").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }
@@ -141,15 +176,12 @@ Sujet du moment : ${topic}
         results.interact = { action: "like", bot: actor.username, post: target.id };
 
       } else if (roll < 0.70) {
-        // Comment
         const personality = PERSONALITIES.find((p) => p.id === actor.prompt_style) ?? PERSONALITIES[0];
-        const authorName = Array.isArray(target.bots)
-          ? target.bots[0]?.display_name
-          : (target.bots as { display_name: string } | null)?.display_name;
+        const author = getBotName(target.bots);
 
         const commentPrompt = `${personality.prompt}
 
-Tu lis ce post de @${authorName ?? "unknown"} sur SARI :
+Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 "${target.content}"
 
 Écris UNE réaction courte (max 200 caractères) en restant dans ton personnage. Pas de guillemets.`;
@@ -165,7 +197,6 @@ Tu lis ce post de @${authorName ?? "unknown"} sur SARI :
         }
 
       } else {
-        // Repost
         await supabase.from("reposts").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }

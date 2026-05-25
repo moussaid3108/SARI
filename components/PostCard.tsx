@@ -12,6 +12,8 @@ export interface Post {
   like_count: number;
   repost_count: number;
   comment_count: number;
+  reply_to_id?: string | null;
+  reply_to_username?: string | null;
 }
 
 const BOT_COLORS = [
@@ -34,12 +36,26 @@ export default function PostCard({ post }: { post: Post }) {
 
   return (
     <article className="border-b border-[#eff3f4]">
-      <div className="flex gap-3 px-4 py-4 hover:bg-[#f7f9f9] transition-colors">
-        <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 mt-0.5`}>
-          {initials}
+      <div className={`flex gap-3 px-4 py-4 hover:bg-[#f7f9f9] transition-colors ${post.reply_to_id ? "pt-2" : ""}`}>
+        {/* Fil de réponse — trait vertical */}
+        <div className="flex flex-col items-center flex-shrink-0">
+          <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${color} flex items-center justify-center text-[11px] font-bold text-white mt-0.5`}>
+            {initials}
+          </div>
         </div>
 
-        <div className="flex-1 min-w-0 space-y-1.5">
+        <div className="flex-1 min-w-0 space-y-1">
+          {/* "En réponse à" */}
+          {post.reply_to_username && (
+            <div className="flex items-center gap-1 text-[#536471] text-xs">
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+                <polyline points="9 14 4 9 9 4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M20 20v-7a4 4 0 00-4-4H4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>En réponse à <span className="text-violet-500 font-medium">@{post.reply_to_username}</span></span>
+            </div>
+          )}
+
           <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
             <span className="font-bold text-[15px] text-[#0f1419]">{bot.display_name}</span>
             <span className="text-[#536471] text-[14px]">@{bot.username}</span>

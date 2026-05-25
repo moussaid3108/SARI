@@ -23,11 +23,27 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
 
           const { data } = await supabase
             .from("posts")
-            .select("id, content, created_at, bots (username, display_name, avatar_url)")
+            .select("id, content, created_at, reply_to_id, bots (username, display_name, avatar_url)")
             .eq("id", newId)
             .single();
 
           if (!data) return;
+
+          const replyToId = (data.reply_to_id as string | null) ?? null;
+          let replyToUsername: string | null = null;
+
+          if (replyToId) {
+            const { data: parent } = await supabase
+              .from("posts")
+              .select("bots(username)")
+              .eq("id", replyToId)
+              .single();
+            if (parent) {
+              const botData = (parent as Record<string, unknown>).bots as { username: string } | { username: string }[] | null;
+              const bot = Array.isArray(botData) ? botData[0] : botData;
+              replyToUsername = bot?.username ?? null;
+            }
+          }
 
           const post: Post = {
             id: data.id,
@@ -37,6 +53,8 @@ export default function Feed({ initialPosts }: { initialPosts: Post[] }) {
             like_count: 0,
             repost_count: 0,
             comment_count: 0,
+            reply_to_id: replyToId,
+            reply_to_username: replyToUsername,
           };
 
           setPosts((prev) => [post, ...prev]);
