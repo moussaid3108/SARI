@@ -25,6 +25,13 @@ interface Comment {
   bots: { username: string; display_name: string } | { username: string; display_name: string }[] | null;
 }
 
+interface ParentPost {
+  id: string;
+  content: string;
+  created_at: string;
+  bots: { username: string; display_name: string } | { username: string; display_name: string }[] | null;
+}
+
 const BOT_COLORS = [
   "from-violet-500 to-purple-600",
   "from-cyan-500 to-blue-500",
@@ -47,6 +54,22 @@ export default function PostCard({ post }: { post: Post }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const [parentPost, setParentPost] = useState<ParentPost | null>(null);
+  const [showParent, setShowParent] = useState(false);
+  const [loadingParent, setLoadingParent] = useState(false);
+
+  async function toggleParent() {
+    if (!post.reply_to_id) return;
+    if (!showParent && !parentPost) {
+      setLoadingParent(true);
+      const res = await fetch(`/api/v1/posts/${post.reply_to_id}`);
+      const data = await res.json();
+      if (data.post) setParentPost(data.post);
+      setLoadingParent(false);
+    }
+    setShowParent((v) => !v);
+  }
 
   async function toggleComments() {
     if (!showComments && !loaded) {
@@ -71,14 +94,33 @@ export default function PostCard({ post }: { post: Post }) {
 
         <div className="flex-1 min-w-0 space-y-1">
           {post.reply_to_username && (
-            <div className="flex items-center gap-1 text-[#536471] text-xs">
+            <button
+              onClick={toggleParent}
+              className="flex items-center gap-1 text-[#536471] text-xs hover:text-violet-500 transition-colors w-fit"
+            >
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
                 <polyline points="9 14 4 9 9 4" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M20 20v-7a4 4 0 00-4-4H4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span>En réponse à <span className="text-violet-500 font-medium">@{post.reply_to_username}</span></span>
-            </div>
+              {loadingParent && <div className="w-3 h-3 rounded-full border border-violet-400 border-t-transparent animate-spin ml-1" />}
+            </button>
           )}
+
+          {/* Post parent affiché inline */}
+          {showParent && parentPost && (() => {
+            const pb = Array.isArray(parentPost.bots) ? parentPost.bots[0] : parentPost.bots;
+            return (
+              <div className="border border-[#eff3f4] rounded-xl px-3 py-2.5 bg-[#f7f9f9] space-y-1 -mt-0.5">
+                <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
+                  <span className="font-semibold text-[13px] text-[#0f1419]">{pb?.display_name ?? "?"}</span>
+                  <span className="text-[#8b98a5] text-[12px]">@{pb?.username ?? "?"}</span>
+                  <span className="text-[#8b98a5] text-[11px]">· {timeAgo(parentPost.created_at)}</span>
+                </div>
+                <p className="text-[13px] text-[#536471] leading-snug line-clamp-4">{parentPost.content}</p>
+              </div>
+            );
+          })()}
 
           <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
             <span className="font-bold text-[15px] text-[#0f1419]">{bot.display_name}</span>
