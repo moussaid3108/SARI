@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useIdentity } from "@/hooks/useIdentity";
 import { BotAvatar } from "./RightPanel";
 import { PERSONALITIES } from "@/lib/personalities";
@@ -19,6 +19,8 @@ interface Bot {
   llm_provider: string | null;
 }
 
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
+
 export default function BotManager() {
   const { identity } = useIdentity();
   const [bots, setBots] = useState<Bot[]>([]);
@@ -28,13 +30,22 @@ export default function BotManager() {
   const [isHosted, setIsHosted] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
-  const [promptStyle, setPromptStyle] = useState<string>(PERSONALITIES[0].id);
+  const [description, setDescription] = useState("");
+  const [promptStyle, setPromptStyle] = useState("");
   const [llmProvider, setLlmProvider] = useState<string>(LLM_PROVIDERS[0].id);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [generatingName, setGeneratingName] = useState(false);
+  const [generateError, setGenerateError] = useState("");
+
   const [revealed, setRevealed] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
 
   useEffect(() => {
     if (!identity) return;
@@ -43,6 +54,25 @@ export default function BotManager() {
       .then((d) => setBots(d.bots ?? []))
       .finally(() => setLoading(false));
   }, [identity]);
+
+  useEffect(() => {
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    if (!username || username.length < 2) {
+      setUsernameStatus("idle");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setUsernameStatus("invalid");
+      return;
+    }
+    setUsernameStatus("checking");
+    checkTimer.current = setTimeout(async () => {
+      const res = await fetch(`/api/v1/bots/check-username?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      setUsernameStatus(data.available ? "available" : "taken");
+    }, 500);
+    return () => { if (checkTimer.current) clearTimeout(checkTimer.current); };
+  }, [username]);
 
   function copyToken(token: string, id: string) {
     navigator.clipboard.writeText(token);
@@ -55,14 +85,43 @@ export default function BotManager() {
     setIsHosted(true);
     setDisplayName("");
     setUsername("");
-    setPromptStyle(PERSONALITIES[0].id);
+    setDescription("");
+    setPromptStyle("");
     setLlmProvider(LLM_PROVIDERS[0].id);
     setError("");
+    setGenerateError("");
+    setUsernameStatus("idle");
+  }
+
+  async function handleGenerateName() {
+    if (!canGenerateName) return;
+    setGeneratingName(true);
+    setGenerateError("");
+    try {
+      const res = await fetch("/api/v1/bots/generate-name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personality_id: promptStyle, description }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGenerateError(data.error ?? "Erreur lors de la génération");
+      } else {
+        setDisplayName(data.display_name);
+        setUsername(data.username);
+      }
+    } catch {
+      setGenerateError("Erreur réseau, réessaie");
+    } finally {
+      setGeneratingName(false);
+    }
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!identity) return;
+    if (usernameStatus === "taken") { setError("Ce nom d'utilisateur est déjà pris"); return; }
+    if (usernameStatus === "invalid") { setError("Nom d'utilisateur invalide"); return; }
     setCreating(true);
     setError("");
 
@@ -81,7 +140,7 @@ export default function BotManager() {
 
     const data = await res.json();
     if (!res.ok) {
-      setError(data.error ?? "Error creating bot");
+      setError(data.error ?? "Erreur lors de la création");
     } else {
       setBots([data.bot, ...bots]);
       resetForm();
@@ -108,6 +167,7 @@ export default function BotManager() {
         </button>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
+          {/* Mode toggle */}
           <div className="p-4 border-b border-[#eff3f4]">
             <div className="flex items-center gap-3 bg-[#f7f9f9] rounded-xl p-1">
               <button
@@ -137,18 +197,104 @@ export default function BotManager() {
           </div>
 
           <div className="p-4 space-y-4">
+            {/* Personnalité — Auto-Pilote only */}
+            {isHosted && (
+              <div className="space-y-1">
+                <label className="text-[#536471] text-xs font-medium">
+                  Personnalité <span className="text-rose-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERSONALITIES.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setPromptStyle(p.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                        promptStyle === p.id
+                          ? "border-violet-400 bg-violet-50 text-violet-700"
+                          : "border-[#eff3f4] text-[#536471] hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="text-base">{p.emoji}</span>
+                      <span className="text-xs font-medium truncate">{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {promptStyle && (
+                  <p className="text-[#8b98a5] text-xs mt-1.5 px-1">
+                    {PERSONALITIES.find((p) => p.id === promptStyle)?.description}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="space-y-1">
+              <label className="text-[#536471] text-xs font-medium">
+                Description de ton bot <span className="text-rose-400">*</span>
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={300}
+                rows={3}
+                placeholder="Ex : Un bot passionné par l'astronomie qui partage des faits surprenants sur l'univers avec une touche d'humour..."
+                className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all resize-none"
+              />
+              <p className="text-[#8b98a5] text-[11px] text-right">{description.length}/300</p>
+            </div>
+
+            {/* Bouton génération IA */}
+            {isHosted && (
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={handleGenerateName}
+                  disabled={!canGenerateName || generatingName}
+                  className={`w-full py-2.5 rounded-xl border-2 border-dashed text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                    canGenerateName && !generatingName
+                      ? "border-violet-400 text-violet-600 hover:bg-violet-50 cursor-pointer"
+                      : "border-[#eff3f4] text-[#8b98a5] cursor-not-allowed"
+                  }`}
+                >
+                  {generatingName ? (
+                    <>
+                      <div className="w-4 h-4 rounded-full border-2 border-violet-400 border-t-transparent animate-spin" />
+                      L'IA réfléchit à son nom...
+                    </>
+                  ) : (
+                    <>
+                      ✨ Laisser l'IA choisir son nom
+                    </>
+                  )}
+                </button>
+                {!canGenerateName && (
+                  <p className="text-[#8b98a5] text-[11px] text-center">
+                    {!promptStyle && !description.trim()
+                      ? "Sélectionne une personnalité et remplis la description d'abord"
+                      : !promptStyle
+                      ? "Sélectionne une personnalité d'abord"
+                      : "Remplis la description d'abord"}
+                  </p>
+                )}
+                {generateError && <p className="text-red-500 text-xs text-center">{generateError}</p>}
+              </div>
+            )}
+
+            {/* Nom affiché */}
             <div className="space-y-1">
               <label className="text-[#536471] text-xs font-medium">Nom affiché</label>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                required maxLength={50}
+                required
+                maxLength={50}
                 placeholder="Mon Agent de Recherche"
-                autoFocus
                 className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
               />
             </div>
 
+            {/* Nom d'utilisateur + check dispo */}
             <div className="space-y-1">
               <label className="text-[#536471] text-xs font-medium">Nom d'utilisateur</label>
               <div className="relative">
@@ -156,63 +302,60 @@ export default function BotManager() {
                 <input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  required maxLength={30}
+                  required
+                  maxLength={30}
                   pattern="[a-zA-Z0-9_]+"
-                  placeholder="my_agent"
-                  className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl pl-8 pr-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                  placeholder="mon_agent"
+                  className={`w-full bg-[#f7f9f9] border rounded-xl pl-8 pr-10 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all ${
+                    usernameStatus === "taken" || usernameStatus === "invalid"
+                      ? "border-red-300 focus:border-red-400"
+                      : usernameStatus === "available"
+                      ? "border-emerald-300 focus:border-emerald-400"
+                      : "border-[#eff3f4] focus:border-violet-400 focus:bg-white"
+                  }`}
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+                  {usernameStatus === "checking" && (
+                    <div className="w-4 h-4 rounded-full border-2 border-violet-300 border-t-transparent animate-spin" />
+                  )}
+                  {usernameStatus === "available" && <span className="text-emerald-500">✓</span>}
+                  {usernameStatus === "taken" && <span className="text-red-400">✕</span>}
+                  {usernameStatus === "invalid" && <span className="text-red-400">✕</span>}
+                </div>
               </div>
+              {usernameStatus === "taken" && (
+                <p className="text-red-400 text-xs px-1">Ce nom d'utilisateur est déjà pris</p>
+              )}
+              {usernameStatus === "invalid" && (
+                <p className="text-red-400 text-xs px-1">Lettres, chiffres et underscore uniquement</p>
+              )}
+              {usernameStatus === "available" && (
+                <p className="text-emerald-500 text-xs px-1">Disponible ✓</p>
+              )}
             </div>
 
+            {/* LLM — Auto-Pilote only */}
             {isHosted && (
-              <>
-                <div className="space-y-1">
-                  <label className="text-[#536471] text-xs font-medium">Personnalité</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PERSONALITIES.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setPromptStyle(p.id)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
-                          promptStyle === p.id
-                            ? "border-violet-400 bg-violet-50 text-violet-700"
-                            : "border-[#eff3f4] text-[#536471] hover:border-gray-300"
-                        }`}
-                      >
-                        <span className="text-base">{p.emoji}</span>
-                        <span className="text-xs font-medium truncate">{p.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  {promptStyle && (
-                    <p className="text-[#8b98a5] text-xs mt-1.5 px-1">
-                      {PERSONALITIES.find((p) => p.id === promptStyle)?.description}
-                    </p>
-                  )}
+              <div className="space-y-1">
+                <label className="text-[#536471] text-xs font-medium">Modèle LLM</label>
+                <div className="flex gap-2">
+                  {LLM_PROVIDERS.map((prov) => (
+                    <button
+                      key={prov.id}
+                      type="button"
+                      onClick={() => setLlmProvider(prov.id)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border text-xs font-semibold transition-all ${
+                        llmProvider === prov.id
+                          ? "border-violet-400 bg-violet-50 text-violet-700"
+                          : "border-[#eff3f4] text-[#536471] hover:border-gray-300"
+                      }`}
+                    >
+                      <span>{prov.emoji}</span>
+                      <span className="truncate">{prov.label}</span>
+                    </button>
+                  ))}
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-[#536471] text-xs font-medium">Modèle LLM</label>
-                  <div className="flex gap-2">
-                    {LLM_PROVIDERS.map((prov) => (
-                      <button
-                        key={prov.id}
-                        type="button"
-                        onClick={() => setLlmProvider(prov.id)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border text-xs font-semibold transition-all ${
-                          llmProvider === prov.id
-                            ? "border-violet-400 bg-violet-50 text-violet-700"
-                            : "border-[#eff3f4] text-[#536471] hover:border-gray-300"
-                        }`}
-                      >
-                        <span>{prov.emoji}</span>
-                        <span className="truncate">{prov.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
+              </div>
             )}
 
             {!isHosted && (
@@ -240,7 +383,7 @@ export default function BotManager() {
               </button>
               <button
                 type="submit"
-                disabled={creating}
+                disabled={creating || usernameStatus === "taken" || usernameStatus === "invalid"}
                 className="flex-1 py-2.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold transition-colors"
               >
                 {creating ? "Création..." : "Créer"}
