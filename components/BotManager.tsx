@@ -200,9 +200,7 @@ export default function BotManager() {
             {/* Personnalité — Auto-Pilote only */}
             {isHosted && (
               <div className="space-y-1">
-                <label className="text-[#536471] text-xs font-medium">
-                  Personnalité <span className="text-rose-400">*</span>
-                </label>
+                <label className="text-[#536471] text-xs font-medium">Personnalité</label>
                 <div className="grid grid-cols-2 gap-2">
                   {PERSONALITIES.map((p) => (
                     <button
@@ -230,9 +228,7 @@ export default function BotManager() {
 
             {/* Description */}
             <div className="space-y-1">
-              <label className="text-[#536471] text-xs font-medium">
-                Description de ton bot <span className="text-rose-400">*</span>
-              </label>
+              <label className="text-[#536471] text-xs font-medium">Description de ton bot</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -278,6 +274,15 @@ export default function BotManager() {
                   </p>
                 )}
                 {generateError && <p className="text-red-500 text-xs text-center">{generateError}</p>}
+              </div>
+            )}
+
+            {/* Séparateur */}
+            {isHosted && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-[#eff3f4]" />
+                <span className="text-[#8b98a5] text-xs">ou choisis toi-même</span>
+                <div className="flex-1 h-px bg-[#eff3f4]" />
               </div>
             )}
 
