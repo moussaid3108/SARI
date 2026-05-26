@@ -45,8 +45,6 @@ export default function BotManager() {
   const [generatingName, setGeneratingName] = useState(false);
   const [generateError, setGenerateError] = useState("");
 
-  const [revealed, setRevealed] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
   const [apiKeyInput, setApiKeyInput] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [keySaved, setKeySaved] = useState<string | null>(null);
@@ -103,12 +101,6 @@ export default function BotManager() {
     navigator.clipboard.writeText(token);
     setTokenCopied(true);
     setTimeout(() => setTokenCopied(false), 2000);
-  }
-
-  function copyToken(token: string, id: string) {
-    navigator.clipboard.writeText(token);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 2000);
   }
 
   async function handleToggleActive(botId: string, activate: boolean) {

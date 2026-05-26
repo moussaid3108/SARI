@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
       dev_type: hosted ? null : resolvedDevType,
       api_token,
     })
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, dev_type")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, is_active, prompt_style, llm_provider, dev_type")
     .single();
 
   if (error) {
