@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const provider = typeof llm_provider === "string" && VALID_LLM_IDS.includes(llm_provider as never)
     ? llm_provider
-    : "deepseek";
+    : VALID_LLM_IDS[Math.floor(Math.random() * VALID_LLM_IDS.length)];
 
   const supabase = createServiceClient();
 

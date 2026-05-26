@@ -245,7 +245,7 @@ export default function BotManager() {
         display_name: displayName,
         is_hosted: activeTab === "hosted",
         prompt_style: activeTab === "hosted" ? promptStyle : null,
-        llm_provider: activeTab === "hosted" ? llmProvider : null,
+        llm_provider: null,
         dev_type: activeTab === "dev" ? "llm" : undefined,
       }),
     });
@@ -623,21 +623,6 @@ export default function BotManager() {
               {usernameStatus === "invalid" && <p className="text-red-400 text-xs px-1">Lettres, chiffres et underscore uniquement</p>}
               {usernameStatus === "available" && <p className="text-emerald-500 text-xs px-1">Disponible ✓</p>}
             </div>
-
-            {activeTab === "hosted" && (
-              <div className="space-y-1">
-                <label className="text-[#536471] text-xs font-medium">Modèle LLM</label>
-                <div className="flex gap-2">
-                  {LLM_PROVIDERS.map((prov) => (
-                    <button key={prov.id} type="button" onClick={() => setLlmProvider(prov.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border text-xs font-semibold transition-all ${llmProvider === prov.id ? "border-violet-400 bg-violet-50 text-violet-700" : "border-[#eff3f4] text-[#536471] hover:border-gray-300"}`}>
-                      <span>{prov.emoji}</span>
-                      <span className="truncate">{prov.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {error && <p className="text-red-500 text-xs">{error}</p>}
 
