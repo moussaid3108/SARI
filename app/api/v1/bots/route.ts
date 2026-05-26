@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data: bots, error } = await supabase
     .from("bots")
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, is_active, prompt_style, llm_provider, llm_api_key")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, is_active, prompt_style, llm_provider, llm_api_key, dev_type")
     .eq("user_id", user_id)
     .order("created_at", { ascending: false });
 
@@ -21,7 +21,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch bots" }, { status: 500 });
   }
 
-  // Ne jamais exposer la clé chiffrée — juste indiquer si elle existe
   const safeBots = (bots ?? []).map(({ llm_api_key, ...b }: { llm_api_key: string | null; [k: string]: unknown }) => ({
     ...b,
     has_custom_key: llm_api_key !== null,
@@ -38,6 +37,7 @@ export async function POST(req: NextRequest) {
     is_hosted?: unknown;
     prompt_style?: unknown;
     llm_provider?: unknown;
+    dev_type?: unknown;
   };
 
   try {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { user_id, username, display_name, is_hosted, prompt_style, llm_provider } = body;
+  const { user_id, username, display_name, is_hosted, prompt_style, llm_provider, dev_type } = body;
 
   if (!user_id || typeof user_id !== "string") {
     return NextResponse.json({ error: "Missing user_id" }, { status: 400 });
@@ -59,13 +59,18 @@ export async function POST(req: NextRequest) {
   }
 
   const hosted = is_hosted === true;
+
+  if (!hosted && dev_type !== "llm" && dev_type !== "token") {
+    return NextResponse.json({ error: "dev_type requis pour les bots développeur ('llm' ou 'token')" }, { status: 400 });
+  }
+
   const provider = typeof llm_provider === "string" && VALID_LLM_IDS.includes(llm_provider as never)
     ? llm_provider
     : "deepseek";
 
   const supabase = createServiceClient();
 
-  // Limite globale : 50 bots par user (actifs ou non)
+  // Limite globale : 50 bots par user
   const { count: totalCount } = await supabase
     .from("bots")
     .select("id", { count: "exact", head: true })
@@ -89,16 +94,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Limite développeur : 5 bots max
-  if (!hosted) {
-    const { count: devCount } = await supabase
+  // Limite dev LLM : 5 bots max
+  if (!hosted && dev_type === "llm") {
+    const { count: llmCount } = await supabase
       .from("bots")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user_id)
-      .eq("is_hosted", false);
+      .eq("is_hosted", false)
+      .eq("dev_type", "llm");
 
-    if ((devCount ?? 0) >= 5) {
-      return NextResponse.json({ error: "Limite de 5 bots Développeur atteinte." }, { status: 409 });
+    if ((llmCount ?? 0) >= 5) {
+      return NextResponse.json({ error: "Limite de 5 bots LLM atteinte." }, { status: 409 });
+    }
+  }
+
+  // Limite dev token : 5 bots max
+  if (!hosted && dev_type === "token") {
+    const { count: tokenCount } = await supabase
+      .from("bots")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user_id)
+      .eq("is_hosted", false)
+      .eq("dev_type", "token");
+
+    if ((tokenCount ?? 0) >= 5) {
+      return NextResponse.json({ error: "Limite de 5 bots Token atteinte." }, { status: 409 });
     }
   }
 
@@ -133,9 +153,10 @@ export async function POST(req: NextRequest) {
       is_hosted: hosted,
       prompt_style: hosted && typeof prompt_style === "string" ? prompt_style : null,
       llm_provider: hosted ? provider : null,
+      dev_type: hosted ? null : dev_type,
       api_token,
     })
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, dev_type")
     .single();
 
   if (error) {
