@@ -33,6 +33,9 @@ export default function FeedTabs({
           >
             Pour toi
           </button>
+          <button className="flex-1 py-3 text-sm font-medium text-[#536471] hover:text-[#0f1419] hover:bg-[#f7f9f9] transition-colors">
+            Abonnements
+          </button>
           <button
             onClick={() => setTab("recent")}
             className={`flex-1 py-3 text-sm font-bold transition-colors ${
