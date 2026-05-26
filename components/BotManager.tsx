@@ -57,7 +57,7 @@ export default function BotManager() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [togglingActive, setTogglingActive] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"hosted" | "dev">("hosted");
+  const [activeTab, setActiveTab] = useState<"all" | "hosted" | "dev">("all");
 
   const canGenerateName = activeTab === "hosted" && promptStyle !== "" && description.trim().length > 0;
 
@@ -248,7 +248,7 @@ export default function BotManager() {
     );
   }
 
-  const filteredBots = bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
+  const filteredBots = activeTab === "all" ? bots : bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
   const activeHostedCount = bots.filter((b) => b.is_hosted && b.is_active).length;
   const devBotCount = bots.filter((b) => !b.is_hosted).length;
 
@@ -257,6 +257,14 @@ export default function BotManager() {
       {/* Onglets Auto-Pilote / Développeur */}
       {!showForm && (
         <div className="flex items-center gap-1 bg-[#f7f9f9] rounded-xl p-1">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === "all" ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471] hover:text-[#0f1419]"
+            }`}
+          >
+            Tous
+          </button>
           <button
             onClick={() => setActiveTab("hosted")}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -271,19 +279,36 @@ export default function BotManager() {
               activeTab === "dev" ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471] hover:text-[#0f1419]"
             }`}
           >
-            💻 Développeur
+            💻 Dev
           </button>
         </div>
       )}
 
       {!showForm ? (
         <div className="space-y-2">
-          <button
-            onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
-            className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
-          >
-            {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
-          </button>
+          {activeTab === "all" ? (
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setIsHosted(true); setActiveTab("hosted"); setShowForm(true); }}
+                className="flex-1 py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-sm font-bold"
+              >
+                🚀 Auto-Pilote
+              </button>
+              <button
+                onClick={() => { setIsHosted(false); setActiveTab("dev"); setShowForm(true); }}
+                className="flex-1 py-3 rounded-full border border-violet-600 text-violet-600 hover:bg-violet-50 transition-colors text-sm font-bold"
+              >
+                💻 Développeur
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
+              className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
+            >
+              {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
+            </button>
+          )}
           <div className="flex items-center justify-between px-1">
             {activeTab === "hosted" ? (
               <>
@@ -294,13 +319,22 @@ export default function BotManager() {
                   Total : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
                 </p>
               </>
-            ) : (
+            ) : activeTab === "dev" ? (
               <>
                 <p className="text-[#8b98a5] text-xs">
                   Bots dev : <span className={`font-semibold ${devBotCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devBotCount}/5</span>
                 </p>
                 <p className="text-[#8b98a5] text-xs">
                   Total : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[#8b98a5] text-xs">
+                  Auto-Pilote actifs : <span className={`font-semibold ${activeHostedCount >= 10 ? "text-red-500" : "text-[#0f1419]"}`}>{activeHostedCount}/10</span>
+                </p>
+                <p className="text-[#8b98a5] text-xs">
+                  Total bots : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
                 </p>
               </>
             )}
@@ -533,12 +567,14 @@ export default function BotManager() {
       {filteredBots.length === 0 && !showForm && (
         <div className="flex flex-col items-center py-16 gap-3 text-[#536471]">
           <div className="w-16 h-16 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-3xl">
-            {activeTab === "hosted" ? "🚀" : "💻"}
+            {activeTab === "hosted" ? "🚀" : activeTab === "dev" ? "💻" : "🤖"}
           </div>
           <p className="text-sm text-center max-w-[220px]">
             {activeTab === "hosted"
               ? "Aucun bot Auto-Pilote. Crée-en un et SARI s'occupe du reste."
-              : "Aucun bot Développeur. Crée-en un pour récupérer ton token API."}
+              : activeTab === "dev"
+              ? "Aucun bot Développeur. Crée-en un pour récupérer ton token API."
+              : "Aucun bot pour l'instant. Crée ton premier agent IA."}
           </p>
         </div>
       )}
