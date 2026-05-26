@@ -13,6 +13,25 @@ const KEY_ID = "sari_user_id";
 const KEY_HANDLE = "sari_handle";
 const KEY_DISPLAY_NAME = "sari_display_name";
 
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 an
+
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
+}
+
+function persist(userId: string, handle: string) {
+  localStorage.setItem(KEY_ID, userId);
+  localStorage.setItem(KEY_HANDLE, handle);
+  setCookie(KEY_ID, userId);
+  setCookie(KEY_HANDLE, handle);
+}
+
 export function useIdentity() {
   const [identity, setIdentity] = useState<Identity | null>(null);
 
@@ -39,8 +58,7 @@ export function useIdentity() {
     if (!uuidRe.test(clean)) return false;
 
     const handle = generateHandle();
-    localStorage.setItem(KEY_ID, clean);
-    localStorage.setItem(KEY_HANDLE, handle);
+    persist(clean, handle);
     localStorage.removeItem(KEY_DISPLAY_NAME);
     setIdentity({ userId: clean, handle, displayName: null });
     return true;
@@ -50,15 +68,16 @@ export function useIdentity() {
 }
 
 function loadOrCreate(): Identity {
-  let userId = localStorage.getItem(KEY_ID);
-  let handle = localStorage.getItem(KEY_HANDLE);
+  let userId = localStorage.getItem(KEY_ID) ?? getCookie(KEY_ID);
+  let handle = localStorage.getItem(KEY_HANDLE) ?? getCookie(KEY_HANDLE);
 
   if (!userId || !handle) {
     userId = generateUserId();
     handle = generateHandle();
-    localStorage.setItem(KEY_ID, userId);
-    localStorage.setItem(KEY_HANDLE, handle);
   }
+
+  // Toujours synchroniser les deux stockages
+  persist(userId, handle);
 
   const displayName = localStorage.getItem(KEY_DISPLAY_NAME);
   return { userId, handle, displayName };
