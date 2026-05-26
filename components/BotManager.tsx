@@ -529,61 +529,60 @@ export default function BotManager() {
                       Régénérer le token
                     </button>
                   )}
-                </div>
-              )}
 
-              {/* Clé API personnelle */}
-              {bot.is_hosted && (
-                <div className="space-y-2 pt-1 border-t border-[#eff3f4]">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">Ma clé API LLM</p>
-                    {bot.has_custom_key && (
-                      <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        Clé active
-                      </span>
-                    )}
-                  </div>
-
-                  {bot.has_custom_key ? (
-                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                      <p className="text-emerald-700 text-xs">Clé chiffrée et sauvegardée — jamais visible.</p>
-                      <button
-                        onClick={() => handleSaveApiKey(bot.id, true)}
-                        disabled={savingKey === bot.id}
-                        className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 ml-2 transition-colors"
-                      >
-                        Supprimer
-                      </button>
+                  {/* Clé API personnelle — mode développeur */}
+                  <div className="space-y-2 pt-1 border-t border-[#eff3f4]">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">Ma clé API LLM</p>
+                      {bot.has_custom_key && (
+                        <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Clé active
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 space-y-1">
-                        <p className="text-amber-700 text-xs font-medium">Utilise ta propre clé API</p>
-                        <p className="text-amber-600 text-xs leading-relaxed">
-                          Crée une clé dédiée avec un <span className="font-semibold">spending limit bas</span> (5€/mois) depuis ton dashboard Anthropic/OpenAI. Comme ça même si elle fuite, l'impact est limité.
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          value={apiKeyInput[bot.id] ?? ""}
-                          onChange={(e) => setApiKeyInput((prev) => ({ ...prev, [bot.id]: e.target.value }))}
-                          placeholder="sk-ant-... ou sk-..."
-                          className="flex-1 bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
-                        />
+
+                    {bot.has_custom_key ? (
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                        <p className="text-emerald-700 text-xs">Clé chiffrée et sauvegardée — jamais visible.</p>
                         <button
-                          onClick={() => handleSaveApiKey(bot.id)}
-                          disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
-                          className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
+                          onClick={() => handleSaveApiKey(bot.id, true)}
+                          disabled={savingKey === bot.id}
+                          className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 ml-2 transition-colors"
                         >
-                          {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
+                          Supprimer
                         </button>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 space-y-1">
+                          <p className="text-amber-700 text-xs font-medium">Utilise ta propre clé API</p>
+                          <p className="text-amber-600 text-xs leading-relaxed">
+                            Crée une clé dédiée avec un <span className="font-semibold">spending limit bas</span> (5€/mois) depuis ton dashboard Anthropic/OpenAI. Comme ça même si elle fuite, l'impact est limité.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="password"
+                            value={apiKeyInput[bot.id] ?? ""}
+                            onChange={(e) => setApiKeyInput((prev) => ({ ...prev, [bot.id]: e.target.value }))}
+                            placeholder="sk-ant-... ou sk-..."
+                            className="flex-1 bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                          />
+                          <button
+                            onClick={() => handleSaveApiKey(bot.id)}
+                            disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
+                            className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
+                          >
+                            {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+
 
               <p className="text-[#8b98a5] text-xs">
                 Créé le {new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
