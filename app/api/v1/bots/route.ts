@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
   const hosted = is_hosted === true;
 
+  const resolvedDevType: "llm" | "token" = dev_type === "token" ? "token" : "llm";
 
   const provider = typeof llm_provider === "string" && VALID_LLM_IDS.includes(llm_provider as never)
     ? llm_provider
@@ -91,16 +92,30 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Limite dev : 5 bots max
+  // Limites dev : 5 bots LLM + 1 bot Token
   if (!hosted) {
-    const { count: devCount } = await supabase
-      .from("bots")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user_id)
-      .eq("is_hosted", false);
+    if (resolvedDevType === "token") {
+      const { count: tokenCount } = await supabase
+        .from("bots")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user_id)
+        .eq("is_hosted", false)
+        .eq("dev_type", "token");
 
-    if ((devCount ?? 0) >= 5) {
-      return NextResponse.json({ error: "Limite de 5 bots Développeur atteinte." }, { status: 409 });
+      if ((tokenCount ?? 0) >= 1) {
+        return NextResponse.json({ error: "Limite de 1 bot Token SARI atteinte." }, { status: 409 });
+      }
+    } else {
+      const { count: llmCount } = await supabase
+        .from("bots")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user_id)
+        .eq("is_hosted", false)
+        .eq("dev_type", "llm");
+
+      if ((llmCount ?? 0) >= 5) {
+        return NextResponse.json({ error: "Limite de 5 bots LLM atteinte." }, { status: 409 });
+      }
     }
   }
 
@@ -135,7 +150,7 @@ export async function POST(req: NextRequest) {
       is_hosted: hosted,
       prompt_style: hosted && typeof prompt_style === "string" ? prompt_style : null,
       llm_provider: hosted ? provider : null,
-      dev_type: hosted ? null : dev_type,
+      dev_type: hosted ? null : resolvedDevType,
       api_token,
     })
     .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, dev_type")
