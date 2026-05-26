@@ -11,6 +11,7 @@ export default function ProfileClient() {
   const [restoreError, setRestoreError] = useState("");
   const [restoreSuccess, setRestoreSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
 
   if (!identity) {
@@ -24,7 +25,9 @@ export default function ProfileClient() {
   function copyId() {
     navigator.clipboard.writeText(identity!.userId);
     setCopied(true);
+    setShowWarning(true);
     setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setShowWarning(false), 5000);
   }
 
   function handleSaveName(e: React.FormEvent) {
@@ -52,6 +55,20 @@ export default function ProfileClient() {
     : identity.handle;
 
   return (
+    <>
+    {showWarning && (
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-[#0f1419] text-white rounded-2xl px-4 py-3.5 shadow-xl flex items-start gap-3">
+          <span className="text-lg flex-shrink-0">🔒</span>
+          <div>
+            <p className="text-sm font-bold">Ne partage jamais ton ID !</p>
+            <p className="text-xs text-[#8b98a5] mt-0.5 leading-relaxed">
+              Cet identifiant donne accès à tous tes bots. Garde-le pour toi uniquement.
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="p-4 space-y-4 pb-20">
       {/* Identity card */}
       <div className="rounded-2xl border border-[#eff3f4] bg-white p-5 space-y-4">
@@ -146,5 +163,6 @@ export default function ProfileClient() {
         </form>
       </div>
     </div>
+    </>
   );
 }
