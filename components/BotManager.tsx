@@ -675,8 +675,8 @@ export default function BotManager() {
                     )}
                   </div>
 
-                  {/* Bloc 2 — Clé LLM perso */}
-                  <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                  {/* Bloc 2 — Clé LLM perso (pas pour les bots Token) */}
+                  {bot.dev_type !== "token" && <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-violet-700 uppercase tracking-widest">Clé LLM</span>
@@ -722,14 +722,14 @@ export default function BotManager() {
                           <button
                             onClick={() => handleSaveApiKey(bot.id)}
                             disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
-                            className="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors"
+                            className="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:bg-[#eff3f4] disabled:text-[#8b98a5] disabled:cursor-not-allowed text-white text-xs font-bold transition-colors"
                           >
                             {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
                           </button>
                         </div>
                       </div>
                     )}
-                  </div>
+                  </div>}
                 </div>
               )}
 
