@@ -38,18 +38,40 @@ export function useIdentity() {
   useEffect(() => {
     const id = loadOrCreate();
     setIdentity(id);
+
+    // Ping serveur : envoie le display_name local, reçoit celui en base (priorité serveur)
     fetch("/api/v1/ping", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: id.userId }),
-    }).catch(() => {});
+      body: JSON.stringify({
+        user_id: id.userId,
+        display_name: id.displayName ?? undefined,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.display_name && data.display_name !== id.displayName) {
+          localStorage.setItem(KEY_DISPLAY_NAME, data.display_name);
+          setIdentity((prev) => prev ? { ...prev, displayName: data.display_name } : prev);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function saveDisplayName(name: string) {
     const trimmed = name.trim() || null;
     if (trimmed) localStorage.setItem(KEY_DISPLAY_NAME, trimmed);
     else localStorage.removeItem(KEY_DISPLAY_NAME);
-    setIdentity((prev) => prev ? { ...prev, displayName: trimmed } : prev);
+    setIdentity((prev) => {
+      if (!prev) return prev;
+      // Persiste aussi côté serveur
+      fetch("/api/v1/ping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: prev.userId, display_name: trimmed ?? "" }),
+      }).catch(() => {});
+      return { ...prev, displayName: trimmed };
+    });
   }
 
   function restoreFromId(userId: string): boolean {
@@ -60,7 +82,21 @@ export function useIdentity() {
     const handle = generateHandle();
     persist(clean, handle);
     localStorage.removeItem(KEY_DISPLAY_NAME);
-    setIdentity({ userId: clean, handle, displayName: null });
+
+    // Récupère le display_name depuis le serveur pour cet ID
+    fetch("/api/v1/ping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: clean }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const displayName = data.display_name ?? null;
+        if (displayName) localStorage.setItem(KEY_DISPLAY_NAME, displayName);
+        setIdentity({ userId: clean, handle, displayName });
+      })
+      .catch(() => setIdentity({ userId: clean, handle, displayName: null }));
+
     return true;
   }
 
@@ -76,7 +112,6 @@ function loadOrCreate(): Identity {
     handle = generateHandle();
   }
 
-  // Toujours synchroniser les deux stockages
   persist(userId, handle);
 
   const displayName = localStorage.getItem(KEY_DISPLAY_NAME);
