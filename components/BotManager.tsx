@@ -681,18 +681,18 @@ export default function BotManager() {
                         <p className="text-violet-500 text-[11px] leading-relaxed">
                           Colle ta clé Anthropic/OpenAI/Groq. Elle sera chiffrée et jamais exposée. Utilise un <span className="font-semibold">spending limit bas</span> (5€/mois) au cas où.
                         </p>
-                        <div className="flex gap-2">
+                        <div className="space-y-2">
                           <input
                             type="password"
                             value={apiKeyInput[bot.id] ?? ""}
                             onChange={(e) => setApiKeyInput((prev) => ({ ...prev, [bot.id]: e.target.value }))}
                             placeholder="sk-ant-... ou sk-..."
-                            className="flex-1 bg-white border border-violet-200 focus:border-violet-400 rounded-lg px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                            className="w-full bg-white border border-violet-200 focus:border-violet-400 rounded-lg px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
                           />
                           <button
                             onClick={() => handleSaveApiKey(bot.id)}
                             disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
-                            className="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
+                            className="w-full py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors"
                           >
                             {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
                           </button>
