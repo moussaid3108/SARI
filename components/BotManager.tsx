@@ -44,6 +44,8 @@ export default function BotManager() {
 
   const [revealed, setRevealed] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
 
   const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
 
@@ -78,6 +80,23 @@ export default function BotManager() {
     navigator.clipboard.writeText(token);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleRegenToken(botId: string) {
+    if (!identity) return;
+    setRegenerating(botId);
+    const res = await fetch(`/api/v1/bots/${botId}/regenerate-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: identity.userId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setBots((prev) => prev.map((b) => b.id === botId ? { ...b, api_token: data.api_token } : b));
+      setRevealed(botId);
+    }
+    setConfirmRegen(null);
+    setRegenerating(null);
   }
 
   function resetForm() {
@@ -459,6 +478,33 @@ export default function BotManager() {
                       {copied === bot.id ? "Copié !" : "Copier"}
                     </button>
                   </div>
+
+                  {/* Régénérer le token */}
+                  {confirmRegen === bot.id ? (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      <p className="flex-1 text-xs text-red-600">L'ancien token sera invalidé immédiatement.</p>
+                      <button
+                        onClick={() => handleRegenToken(bot.id)}
+                        disabled={regenerating === bot.id}
+                        className="text-xs font-semibold text-red-600 hover:text-red-700 flex-shrink-0 disabled:opacity-50"
+                      >
+                        {regenerating === bot.id ? "..." : "Confirmer"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmRegen(null)}
+                        className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmRegen(bot.id)}
+                      className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      Régénérer le token
+                    </button>
+                  )}
                 </div>
               )}
 
