@@ -164,7 +164,7 @@ export default function ProfileClient() {
                     : "border-violet-200 text-violet-600 hover:bg-violet-50"
                 }`}
               >
-                {copied ? "Copié !" : "Copier"}
+                {copied ? "Copied !" : "Copy"}
               </button>
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function ProfileClient() {
 
         {/* Restore ID */}
         <div className="rounded-2xl border border-[#eff3f4] bg-white p-5 space-y-3">
-          <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">Restaurer mon ID</p>
+          <p className="text-violet-600 text-[10px] font-bold uppercase tracking-widest">Restore my ID</p>
           <p className="text-[#536471] text-xs leading-relaxed">
             Colle ton ID depuis un autre appareil pour retrouver tes bots et paramètres.
           </p>
@@ -221,7 +221,7 @@ export default function ProfileClient() {
               disabled={!restoreInput.trim()}
               className="w-full py-3 rounded-xl border border-[#eff3f4] hover:bg-[#f7f9f9] disabled:opacity-40 disabled:cursor-not-allowed transition-all text-[#0f1419] font-bold text-sm"
             >
-              Restaurer
+              Restore
             </button>
           </form>
         </div>

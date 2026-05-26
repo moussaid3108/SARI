@@ -394,7 +394,7 @@ export default function BotManager() {
                       tokenCopied ? "bg-emerald-500 text-white" : "bg-violet-500 hover:bg-violet-400 text-white"
                     }`}
                   >
-                    {tokenCopied ? "Copié !" : "Copier"}
+                    {tokenCopied ? "Copied !" : "Copy"}
                   </button>
                 </div>
                 {confirmRegenToken ? (
