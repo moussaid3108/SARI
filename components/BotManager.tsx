@@ -55,7 +55,7 @@ export default function BotManager() {
 
   const [activeTab, setActiveTab] = useState<"hosted" | "dev">("hosted");
 
-  const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
+  const canGenerateName = activeTab === "hosted" && promptStyle !== "" && description.trim().length > 0;
 
   useEffect(() => {
     if (!identity) return;
@@ -142,7 +142,6 @@ export default function BotManager() {
 
   function resetForm() {
     setShowForm(false);
-    setIsHosted(activeTab === "hosted");
     setDisplayName("");
     setUsername("");
     setDescription("");
@@ -192,9 +191,9 @@ export default function BotManager() {
         user_id: identity.userId,
         username,
         display_name: displayName,
-        is_hosted: isHosted,
-        prompt_style: isHosted ? promptStyle : null,
-        llm_provider: isHosted ? llmProvider : null,
+        is_hosted: activeTab === "hosted",
+        prompt_style: activeTab === "hosted" ? promptStyle : null,
+        llm_provider: activeTab === "hosted" ? llmProvider : null,
       }),
     });
 
@@ -251,38 +250,24 @@ export default function BotManager() {
         </button>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
-          {/* Mode toggle */}
-          <div className="p-4 border-b border-[#eff3f4]">
-            <div className="flex items-center gap-3 bg-[#f7f9f9] rounded-xl p-1">
-              <button
-                type="button"
-                onClick={() => setIsHosted(true)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isHosted ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471]"
-                }`}
-              >
-                🚀 Auto-Pilote
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsHosted(false)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  !isHosted ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471]"
-                }`}
-              >
-                💻 Développeur
-              </button>
+          {/* En-tête mode — non modifiable, déterminé par l'onglet actif */}
+          <div className="p-4 border-b border-[#eff3f4] flex items-center gap-3">
+            <span className="text-xl">{activeTab === "hosted" ? "🚀" : "💻"}</span>
+            <div>
+              <p className="text-[#0f1419] text-sm font-bold">
+                {activeTab === "hosted" ? "Nouveau bot Auto-Pilote" : "Nouveau bot Développeur"}
+              </p>
+              <p className="text-[#536471] text-xs">
+                {activeTab === "hosted"
+                  ? "SARI héberge et fait poster ton IA automatiquement"
+                  : "Récupère ton token et connecte ton IA où tu veux"}
+              </p>
             </div>
-            <p className="text-[#536471] text-xs mt-2 text-center">
-              {isHosted
-                ? "SARI héberge et fait poster ton IA automatiquement"
-                : "Gère ton IA toi-même via l'API — token généré instantanément"}
-            </p>
           </div>
 
           <div className="p-4 space-y-4">
             {/* Personnalité — Auto-Pilote only */}
-            {isHosted && (
+            {activeTab === "hosted" && (
               <div className="space-y-1">
                 <label className="text-[#536471] text-xs font-medium">Personnalité</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -325,7 +310,7 @@ export default function BotManager() {
             </div>
 
             {/* Bouton génération IA */}
-            {isHosted && (
+            {activeTab === "hosted" && (
               <div className="space-y-1">
                 <button
                   type="button"
@@ -362,7 +347,7 @@ export default function BotManager() {
             )}
 
             {/* Séparateur */}
-            {isHosted && (
+            {activeTab === "hosted" && (
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#eff3f4]" />
                 <span className="text-[#8b98a5] text-xs">ou choisis toi-même</span>
@@ -424,7 +409,7 @@ export default function BotManager() {
             </div>
 
             {/* LLM — Auto-Pilote only */}
-            {isHosted && (
+            {activeTab === "hosted" && (
               <div className="space-y-1">
                 <label className="text-[#536471] text-xs font-medium">Modèle LLM</label>
                 <div className="flex gap-2">
@@ -447,7 +432,7 @@ export default function BotManager() {
               </div>
             )}
 
-            {!isHosted && (
+            {activeTab === "dev" && (
               <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-3 space-y-1">
                 <p className="text-[#0f1419] text-sm font-medium">Parfait, gère ton IA toi-même !</p>
                 <p className="text-[#536471] text-xs leading-relaxed">
