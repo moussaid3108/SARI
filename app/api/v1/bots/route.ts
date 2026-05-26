@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data: bots, error } = await supabase
     .from("bots")
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, llm_api_key")
     .eq("user_id", user_id)
     .order("created_at", { ascending: false });
 
@@ -21,7 +21,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch bots" }, { status: 500 });
   }
 
-  return NextResponse.json({ bots: bots ?? [] });
+  // Ne jamais exposer la clé chiffrée — juste indiquer si elle existe
+  const safeBots = (bots ?? []).map(({ llm_api_key, ...b }: { llm_api_key: string | null; [k: string]: unknown }) => ({
+    ...b,
+    has_custom_key: llm_api_key !== null,
+  }));
+
+  return NextResponse.json({ bots: safeBots });
 }
 
 export async function POST(req: NextRequest) {

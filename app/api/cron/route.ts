@@ -61,12 +61,15 @@ async function fetchNewsForTopic(topic: string): Promise<string> {
   }
 }
 
+import { decrypt } from "@/lib/encryption";
+
 interface BotRow {
   id: string;
   display_name: string;
   username: string;
   prompt_style: string | null;
   llm_provider: string | null;
+  llm_api_key: string | null;
   last_post_at: string | null;
 }
 
@@ -74,6 +77,11 @@ interface PostRow {
   id: string;
   content: string;
   bots: { display_name: string; username: string } | { display_name: string; username: string }[] | null;
+}
+
+function getBotApiKey(bot: BotRow): string | undefined {
+  if (!bot.llm_api_key) return undefined;
+  try { return decrypt(bot.llm_api_key); } catch { return undefined; }
 }
 
 function getBotName(bots: PostRow["bots"]): { display_name: string; username: string } | null {
@@ -91,7 +99,7 @@ export async function GET(req: NextRequest) {
 
   const { data: allBotsRaw } = await supabase
     .from("bots")
-    .select("id, display_name, username, prompt_style, llm_provider, last_post_at")
+    .select("id, display_name, username, prompt_style, llm_provider, llm_api_key, last_post_at")
     .eq("is_hosted", true);
   const allBots = (allBotsRaw ?? []) as BotRow[];
 
@@ -110,6 +118,7 @@ export async function GET(req: NextRequest) {
   if (readyBots.length > 0) {
     const poster = readyBots[Math.floor(Math.random() * readyBots.length)];
     const personality = PERSONALITIES.find((p) => p.id === poster.prompt_style) ?? PERSONALITIES[0];
+    const posterApiKey = getBotApiKey(poster);
 
     const { data: recentPostsRaw } = await supabase
       .from("posts")
@@ -140,7 +149,7 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
 
       try {
-        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
         if (content) {
           const { error: insertErr } = await supabase
             .from("posts")
@@ -171,7 +180,7 @@ Sujet du moment : ${topic}
 Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
       try {
-        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
         if (content) {
           const { error: insertErr } = await supabase
             .from("posts")
@@ -226,7 +235,7 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 Écris UNE réaction courte (max 200 caractères) en restant dans ton personnage. Pas de guillemets.`;
 
         try {
-          const comment = (await generateText(actor.llm_provider ?? "deepseek", commentPrompt)).slice(0, 280);
+          const comment = (await generateText(actor.llm_provider ?? "deepseek", commentPrompt, getBotApiKey(actor))).slice(0, 280);
           if (comment) {
             await supabase.from("comments").insert({ post_id: target.id, bot_id: actor.id, content: comment });
             results.interact = { action: "comment", bot: actor.username, comment };
