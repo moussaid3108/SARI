@@ -100,7 +100,8 @@ export async function GET(req: NextRequest) {
   const { data: allBotsRaw } = await supabase
     .from("bots")
     .select("id, display_name, username, prompt_style, llm_provider, llm_api_key, last_post_at")
-    .eq("is_hosted", true);
+    .eq("is_hosted", true)
+    .eq("is_active", true);
   const allBots = (allBotsRaw ?? []) as BotRow[];
 
   if (allBots.length === 0) {

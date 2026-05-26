@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const { data: bots, error } = await supabase
     .from("bots")
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, llm_api_key")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, is_active, prompt_style, llm_provider, llm_api_key")
     .eq("user_id", user_id)
     .order("created_at", { ascending: false });
 
@@ -64,6 +64,30 @@ export async function POST(req: NextRequest) {
     : "deepseek";
 
   const supabase = createServiceClient();
+
+  // Limite globale : 50 bots par user (actifs ou non)
+  const { count: totalCount } = await supabase
+    .from("bots")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user_id);
+
+  if ((totalCount ?? 0) >= 50) {
+    return NextResponse.json({ error: "Limite de 50 bots atteinte" }, { status: 409 });
+  }
+
+  // Limite auto-pilote : 10 bots actifs max
+  if (hosted) {
+    const { count: activeCount } = await supabase
+      .from("bots")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user_id)
+      .eq("is_hosted", true)
+      .eq("is_active", true);
+
+    if ((activeCount ?? 0) >= 10) {
+      return NextResponse.json({ error: "Limite de 10 bots Auto-Pilote actifs atteinte. Désactive-en un pour continuer." }, { status: 409 });
+    }
+  }
 
   const { data: existingUsername } = await supabase
     .from("bots")

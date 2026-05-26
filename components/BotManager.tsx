@@ -15,6 +15,7 @@ interface Bot {
   api_token: string;
   created_at: string;
   is_hosted: boolean;
+  is_active: boolean;
   prompt_style: string | null;
   llm_provider: string | null;
   has_custom_key?: boolean;
@@ -54,6 +55,7 @@ export default function BotManager() {
   const [keySaved, setKeySaved] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [togglingActive, setTogglingActive] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"hosted" | "dev">("hosted");
 
@@ -101,6 +103,23 @@ export default function BotManager() {
     navigator.clipboard.writeText(token);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleToggleActive(botId: string, activate: boolean) {
+    if (!identity) return;
+    setTogglingActive(botId);
+    const res = await fetch(`/api/v1/bots/${botId}/toggle-active`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: identity.userId, activate }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setBots((prev) => prev.map((b) => b.id === botId ? { ...b, is_active: activate } : b));
+    } else {
+      alert(data.error ?? "Erreur");
+    }
+    setTogglingActive(null);
   }
 
   async function handleDeleteBot(botId: string) {
@@ -230,6 +249,7 @@ export default function BotManager() {
   }
 
   const filteredBots = bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
+  const activeHostedCount = bots.filter((b) => b.is_hosted && b.is_active).length;
 
   return (
     <div className="p-4 space-y-4">
@@ -256,12 +276,24 @@ export default function BotManager() {
       )}
 
       {!showForm ? (
-        <button
-          onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
-          className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
-        >
-          {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
+            className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
+          >
+            {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
+          </button>
+          {activeTab === "hosted" && (
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[#8b98a5] text-xs">
+                Bots actifs : <span className={`font-semibold ${activeHostedCount >= 10 ? "text-red-500" : "text-[#0f1419]"}`}>{activeHostedCount}/10</span>
+              </p>
+              <p className="text-[#8b98a5] text-xs">
+                Bots créés : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
+              </p>
+            </div>
+          )}
+        </div>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
           {/* En-tête mode — non modifiable, déterminé par l'onglet actif */}
@@ -510,14 +542,26 @@ export default function BotManager() {
                   <p className="text-[#0f1419] font-bold text-[15px] leading-tight">{bot.display_name}</p>
                   <p className="text-[#536471] text-sm">@{bot.username}</p>
                 </div>
-                <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${
-                  bot.is_hosted
-                    ? "text-emerald-700 bg-emerald-50 border border-emerald-100"
-                    : "text-[#536471] bg-[#f7f9f9] border border-[#eff3f4]"
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${bot.is_hosted ? "bg-emerald-500 animate-pulse" : "border border-[#8b98a5]"}`} />
-                  {bot.is_hosted ? "Actif" : "En attente"}
-                </div>
+                {bot.is_hosted ? (
+                  <button
+                    onClick={() => handleToggleActive(bot.id, !bot.is_active)}
+                    disabled={togglingActive === bot.id || (!bot.is_active && activeHostedCount >= 10)}
+                    title={!bot.is_active && activeHostedCount >= 10 ? "Limite de 10 bots actifs atteinte" : undefined}
+                    className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 border transition-all disabled:opacity-60 ${
+                      bot.is_active
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"
+                        : "text-[#536471] bg-[#f7f9f9] border-[#eff3f4] hover:border-violet-300"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${bot.is_active ? "bg-emerald-500 animate-pulse" : "bg-[#cbd5e1]"}`} />
+                    {togglingActive === bot.id ? "..." : bot.is_active ? "Actif" : "Inactif"}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 text-[#536471] bg-[#f7f9f9] border border-[#eff3f4]">
+                    <span className="w-1.5 h-1.5 rounded-full border border-[#8b98a5]" />
+                    Dev
+                  </div>
+                )}
               </div>
 
               {bot.is_hosted && bot.prompt_style && (
