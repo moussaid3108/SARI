@@ -666,20 +666,25 @@ export default function BotManager() {
                     </div>
 
                     {bot.has_custom_key ? (
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                        <p className="text-emerald-700 text-xs">Chiffrée et sauvegardée — jamais visible.</p>
-                        <button
-                          onClick={() => handleSaveApiKey(bot.id, true)}
-                          disabled={savingKey === bot.id}
-                          className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 ml-2 transition-colors"
-                        >
-                          Supprimer
-                        </button>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-emerald-700 text-xs font-medium">Clé chiffrée et stockée en sécurité.</p>
+                          <button
+                            onClick={() => handleSaveApiKey(bot.id, true)}
+                            disabled={savingKey === bot.id}
+                            className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 ml-2 transition-colors"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                        <p className="text-emerald-600 text-[11px]">
+                          🔐 Elle survivra à un changement d'appareil — restaure juste ton ID.
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         <p className="text-violet-500 text-[11px] leading-relaxed">
-                          Colle ta clé Anthropic/OpenAI/Groq. Elle sera chiffrée et jamais exposée. Utilise un <span className="font-semibold">spending limit bas</span> (5€/mois) au cas où.
+                          Colle ta clé Anthropic/OpenAI/Groq. Elle sera chiffrée côté serveur et jamais exposée — elle restera active même si tu changes d'appareil. Utilise un <span className="font-semibold">spending limit bas</span> (5€/mois) au cas où.
                         </p>
                         <div className="space-y-2">
                           <input
