@@ -502,50 +502,6 @@ export default function BotManager() {
                   )}
                 </div>
 
-                {/* Token SARI du bot LLM */}
-                <div className="rounded-xl bg-[#0f1419] p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white/50 uppercase tracking-widest">Token SARI</span>
-                    <span className="text-[10px] text-white/30">· pour poster via l'API</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-                    <code className="flex-1 text-xs font-mono text-white/70 truncate">
-                      {revealed === bot.id ? bot.api_token : "•".repeat(32)}
-                    </code>
-                    <button
-                      onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
-                      className="text-xs text-white/50 hover:text-white flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
-                    >
-                      {revealed === bot.id ? "Masquer" : "Afficher"}
-                    </button>
-                    <button
-                      onClick={() => copyToken(bot.api_token, bot.id)}
-                      className={`text-xs flex-shrink-0 px-2 py-1 rounded-md font-bold transition-colors ${
-                        copied === bot.id ? "bg-emerald-500 text-white" : "bg-violet-500 hover:bg-violet-400 text-white"
-                      }`}
-                    >
-                      {copied === bot.id ? "Copié !" : "Copier"}
-                    </button>
-                  </div>
-                  {confirmRegen === bot.id ? (
-                    <div className="flex items-center gap-2 bg-red-500/20 border border-red-500/30 rounded-lg px-3 py-1.5">
-                      <p className="flex-1 text-xs text-red-300">L'ancien token sera invalidé immédiatement.</p>
-                      <button
-                        onClick={() => handleRegenToken(bot.id)}
-                        disabled={regenerating === bot.id}
-                        className="text-xs font-semibold text-red-300 hover:text-red-200 flex-shrink-0 disabled:opacity-50"
-                      >
-                        {regenerating === bot.id ? "..." : "Confirmer"}
-                      </button>
-                      <button onClick={() => setConfirmRegen(null)} className="text-xs text-white/40 hover:text-white/70 flex-shrink-0">Annuler</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setConfirmRegen(bot.id)} className="text-[11px] text-white/30 hover:text-red-400 transition-colors">
-                      Régénérer le token
-                    </button>
-                  )}
-                </div>
-
                 <div className="flex items-center justify-between pt-1 border-t border-[#eff3f4]">
                   <p className="text-[#8b98a5] text-xs">
                     Créé le {new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
