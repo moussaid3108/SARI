@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Limite dev token : 5 bots max
+  // Limite dev token : 1 bot max
   if (!hosted && dev_type === "token") {
     const { count: tokenCount } = await supabase
       .from("bots")
@@ -117,8 +117,8 @@ export async function POST(req: NextRequest) {
       .eq("is_hosted", false)
       .eq("dev_type", "token");
 
-    if ((tokenCount ?? 0) >= 5) {
-      return NextResponse.json({ error: "Limite de 5 bots Token atteinte." }, { status: 409 });
+    if ((tokenCount ?? 0) >= 1) {
+      return NextResponse.json({ error: "Limite d'1 bot Token atteinte." }, { status: 409 });
     }
   }
 

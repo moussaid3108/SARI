@@ -300,7 +300,7 @@ export default function BotManager() {
               </button>
               <button
                 onClick={() => { setIsHosted(false); setDevType("token"); setShowForm(true); }}
-                disabled={devTokenCount >= 5}
+                disabled={devTokenCount >= 1}
                 className="flex-1 py-3 rounded-full border border-violet-600 text-violet-600 hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold"
               >
                 🪙 Bot Token
@@ -323,7 +323,7 @@ export default function BotManager() {
                   🔑 LLM : <span className={`font-semibold ${devLlmCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devLlmCount}/5</span>
                 </p>
                 <p className="text-[#8b98a5] text-xs">
-                  🪙 Token : <span className={`font-semibold ${devTokenCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devTokenCount}/5</span>
+                  🪙 Token : <span className={`font-semibold ${devTokenCount >= 1 ? "text-red-500" : "text-[#0f1419]"}`}>{devTokenCount}/1</span>
                 </p>
               </>
             )}
