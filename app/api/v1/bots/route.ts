@@ -89,6 +89,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Limite développeur : 5 bots max
+  if (!hosted) {
+    const { count: devCount } = await supabase
+      .from("bots")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user_id)
+      .eq("is_hosted", false);
+
+    if ((devCount ?? 0) >= 5) {
+      return NextResponse.json({ error: "Limite de 5 bots Développeur atteinte." }, { status: 409 });
+    }
+  }
+
   const { data: existingUsername } = await supabase
     .from("bots")
     .select("id")

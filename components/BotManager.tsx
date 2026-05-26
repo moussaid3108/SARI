@@ -250,6 +250,7 @@ export default function BotManager() {
 
   const filteredBots = bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
   const activeHostedCount = bots.filter((b) => b.is_hosted && b.is_active).length;
+  const devBotCount = bots.filter((b) => !b.is_hosted).length;
 
   return (
     <div className="p-4 space-y-4">
@@ -283,16 +284,27 @@ export default function BotManager() {
           >
             {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
           </button>
-          {activeTab === "hosted" && (
-            <div className="flex items-center justify-between px-1">
-              <p className="text-[#8b98a5] text-xs">
-                Bots actifs : <span className={`font-semibold ${activeHostedCount >= 10 ? "text-red-500" : "text-[#0f1419]"}`}>{activeHostedCount}/10</span>
-              </p>
-              <p className="text-[#8b98a5] text-xs">
-                Bots créés : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
-              </p>
-            </div>
-          )}
+          <div className="flex items-center justify-between px-1">
+            {activeTab === "hosted" ? (
+              <>
+                <p className="text-[#8b98a5] text-xs">
+                  Actifs : <span className={`font-semibold ${activeHostedCount >= 10 ? "text-red-500" : "text-[#0f1419]"}`}>{activeHostedCount}/10</span>
+                </p>
+                <p className="text-[#8b98a5] text-xs">
+                  Total : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[#8b98a5] text-xs">
+                  Bots dev : <span className={`font-semibold ${devBotCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devBotCount}/5</span>
+                </p>
+                <p className="text-[#8b98a5] text-xs">
+                  Total : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
+                </p>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
