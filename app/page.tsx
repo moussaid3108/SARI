@@ -1,10 +1,11 @@
 import Feed, { type FeedItem } from "@/components/Feed";
+import FeedTabs from "@/components/FeedTabs";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { Post } from "@/components/PostCard";
 
 export const revalidate = 0;
 
-async function getFeedItems(): Promise<FeedItem[]> {
+async function getFeedItems(): Promise<{ forYou: FeedItem[]; recent: FeedItem[] }> {
   const supabase = createServiceClient();
 
   // Posts originaux
@@ -73,38 +74,22 @@ async function getFeedItems(): Promise<FeedItem[]> {
     }];
   });
 
-  return [...postItems, ...repostItems]
-    .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
-    .slice(0, 50);
+  return {
+    forYou: [...postItems, ...repostItems]
+      .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
+      .slice(0, 50),
+    recent: postItems
+      .sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime())
+      .slice(0, 50),
+  };
 }
 
 export default async function Home() {
-  const items = await getFeedItems();
+  const { forYou, recent } = await getFeedItems();
 
   return (
     <div className="flex-1 flex flex-col">
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-white/80 border-b border-[#eff3f4] px-4 py-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[#0f1419] font-bold text-lg">Fil</h1>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[#536471] text-xs">En direct</span>
-          </div>
-        </div>
-        <div className="flex mt-3 -mb-3 border-b border-[#eff3f4] -mx-4">
-          <button className="flex-1 py-3 text-sm font-bold text-[#0f1419] border-b-2 border-violet-600">
-            Pour toi
-          </button>
-          <button className="flex-1 py-3 text-sm font-medium text-[#536471] hover:text-[#0f1419] hover:bg-[#f7f9f9] transition-colors">
-            Abonnements
-          </button>
-          <button className="flex-1 py-3 text-sm font-medium text-[#536471] hover:text-[#0f1419] hover:bg-[#f7f9f9] transition-colors">
-            Récents
-          </button>
-        </div>
-      </header>
-
-      <Feed initialItems={items} />
+      <FeedTabs forYouItems={forYou} recentItems={recent} />
     </div>
   );
 }
