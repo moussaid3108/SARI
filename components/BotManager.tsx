@@ -60,6 +60,8 @@ export default function BotManager() {
   const [tokenCopied, setTokenCopied] = useState(false);
   const [confirmRegenToken, setConfirmRegenToken] = useState(false);
   const [regeneratingToken, setRegeneratingToken] = useState(false);
+  const [showTokenForm, setShowTokenForm] = useState(false);
+  const [tokenFormName, setTokenFormName] = useState("");
 
   const [activeTab, setActiveTab] = useState<"hosted" | "dev">("hosted");
 
@@ -169,18 +171,20 @@ export default function BotManager() {
     setRegeneratingToken(false);
   }
 
-  async function handleCreateSariToken() {
+  async function handleCreateSariToken(e: React.FormEvent) {
+    e.preventDefault();
     if (!identity) return;
     setCreatingToken(true);
     setTokenError("");
-    const shortId = identity.userId.replace(/-/g, "").slice(0, 12);
+    const name = tokenFormName.trim();
+    const username = name.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 30) + "_token";
     const res = await fetch("/api/v1/bots", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: identity.userId,
-        username: `dev_${shortId}`,
-        display_name: "Mon Token SARI",
+        username,
+        display_name: name,
         is_hosted: false,
         dev_type: "token",
       }),
@@ -189,6 +193,8 @@ export default function BotManager() {
     if (res.ok) {
       setBots((prev) => [data.bot, ...prev]);
       setTokenRevealed(true);
+      setShowTokenForm(false);
+      setTokenFormName("");
     } else {
       setTokenError(data.error ?? "Erreur");
     }
@@ -413,6 +419,35 @@ export default function BotManager() {
                   </button>
                 )}
               </div>
+            ) : showTokenForm ? (
+              <form onSubmit={handleCreateSariToken} className="rounded-2xl bg-[#0f1419] p-4 space-y-3">
+                <p className="text-white/60 text-xs">Donne un nom à ton token pour l'identifier</p>
+                <input
+                  value={tokenFormName}
+                  onChange={(e) => { setTokenFormName(e.target.value); setTokenError(""); }}
+                  required
+                  maxLength={50}
+                  placeholder="Ex : Mon app principale"
+                  className="w-full bg-white/10 border border-white/20 focus:border-violet-400 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none transition-all"
+                />
+                {tokenError && <p className="text-red-400 text-xs">{tokenError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowTokenForm(false); setTokenFormName(""); setTokenError(""); }}
+                    className="flex-1 py-2.5 rounded-full border border-white/20 text-white/60 hover:text-white text-sm font-semibold transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creatingToken || !tokenFormName.trim()}
+                    className="flex-1 py-2.5 rounded-full bg-violet-500 hover:bg-violet-400 disabled:opacity-50 text-white text-sm font-bold transition-colors"
+                  >
+                    {creatingToken ? "Génération..." : "Générer"}
+                  </button>
+                </div>
+              </form>
             ) : (
               <div className="rounded-2xl border-2 border-dashed border-[#eff3f4] p-5 flex flex-col items-center gap-3 text-center">
                 <div className="w-12 h-12 rounded-full bg-[#f7f9f9] flex items-center justify-center text-2xl">🪙</div>
@@ -420,13 +455,11 @@ export default function BotManager() {
                   <p className="text-[#0f1419] text-sm font-semibold">Génère ton token SARI</p>
                   <p className="text-[#8b98a5] text-xs mt-0.5">Un seul token · Copie-le et suis les instructions de l'API</p>
                 </div>
-                {tokenError && <p className="text-red-500 text-xs">{tokenError}</p>}
                 <button
-                  onClick={handleCreateSariToken}
-                  disabled={creatingToken}
-                  className="px-5 py-2.5 rounded-full bg-[#0f1419] hover:bg-[#1a2530] disabled:opacity-50 text-white text-sm font-bold transition-colors"
+                  onClick={() => setShowTokenForm(true)}
+                  className="px-5 py-2.5 rounded-full bg-[#0f1419] hover:bg-[#1a2530] text-white text-sm font-bold transition-colors"
                 >
-                  {creatingToken ? "Génération..." : "Générer mon token"}
+                  Générer mon token
                 </button>
               </div>
             )}
