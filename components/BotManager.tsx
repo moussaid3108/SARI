@@ -31,7 +31,6 @@ export default function BotManager() {
   const [showForm, setShowForm] = useState(false);
 
   const [isHosted, setIsHosted] = useState(true);
-  const [devType, setDevType] = useState<"llm" | "token">("llm");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [description, setDescription] = useState("");
@@ -229,7 +228,7 @@ export default function BotManager() {
         is_hosted: activeTab === "hosted",
         prompt_style: activeTab === "hosted" ? promptStyle : null,
         llm_provider: activeTab === "hosted" ? llmProvider : null,
-        dev_type: activeTab === "dev" ? devType : undefined,
+        dev_type: undefined,
       }),
     });
 
@@ -253,8 +252,7 @@ export default function BotManager() {
 
   const filteredBots = bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
   const activeHostedCount = bots.filter((b) => b.is_hosted && b.is_active).length;
-  const devLlmCount = bots.filter((b) => !b.is_hosted && b.dev_type === "llm").length;
-  const devTokenCount = bots.filter((b) => !b.is_hosted && b.dev_type === "token").length;
+  const devBotCount = bots.filter((b) => !b.is_hosted).length;
 
   return (
     <div className="p-4 space-y-4">
@@ -282,31 +280,12 @@ export default function BotManager() {
 
       {!showForm ? (
         <div className="space-y-2">
-          {activeTab === "hosted" ? (
-            <button
-              onClick={() => { setIsHosted(true); setShowForm(true); }}
-              className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
-            >
-              Créer un bot Auto-Pilote
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setIsHosted(false); setDevType("llm"); setShowForm(true); }}
-                disabled={devLlmCount >= 5}
-                className="flex-1 py-3 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white text-sm font-bold"
-              >
-                🔑 Bot LLM
-              </button>
-              <button
-                onClick={() => { setIsHosted(false); setDevType("token"); setShowForm(true); }}
-                disabled={devTokenCount >= 1}
-                className="flex-1 py-3 rounded-full border border-violet-600 text-violet-600 hover:bg-violet-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-bold"
-              >
-                🪙 Bot Token
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
+            className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
+          >
+            {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
+          </button>
           <div className="flex items-center justify-between px-1">
             {activeTab === "hosted" ? (
               <>
@@ -320,10 +299,10 @@ export default function BotManager() {
             ) : (
               <>
                 <p className="text-[#8b98a5] text-xs">
-                  🔑 LLM : <span className={`font-semibold ${devLlmCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devLlmCount}/5</span>
+                  Bots dev : <span className={`font-semibold ${devBotCount >= 5 ? "text-red-500" : "text-[#0f1419]"}`}>{devBotCount}/5</span>
                 </p>
                 <p className="text-[#8b98a5] text-xs">
-                  🪙 Token : <span className={`font-semibold ${devTokenCount >= 1 ? "text-red-500" : "text-[#0f1419]"}`}>{devTokenCount}/1</span>
+                  Total : <span className={`font-semibold ${bots.length >= 50 ? "text-red-500" : "text-[#536471]"}`}>{bots.length}/50</span>
                 </p>
               </>
             )}
@@ -342,10 +321,10 @@ export default function BotManager() {
                 <path d="M19 12H5M12 5l-7 7 7 7" />
               </svg>
             </button>
-            <span className="text-xl">{activeTab === "hosted" ? "🚀" : devType === "llm" ? "🔑" : "🪙"}</span>
+            <span className="text-xl">{activeTab === "hosted" ? "🚀" : "💻"}</span>
             <div>
               <p className="text-[#0f1419] text-sm font-bold">
-                {activeTab === "hosted" ? "Nouveau bot Auto-Pilote" : devType === "llm" ? "Nouveau bot LLM" : "Nouveau bot Token"}
+                {activeTab === "hosted" ? "Nouveau bot Auto-Pilote" : "Nouveau bot Développeur"}
               </p>
               <p className="text-[#536471] text-xs">
                 {activeTab === "hosted"
@@ -531,23 +510,11 @@ export default function BotManager() {
               </div>
             )}
 
-            {activeTab === "dev" && devType === "llm" && (
-              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-1">
-                <p className="text-violet-800 text-sm font-medium">🔑 Ta clé API LLM</p>
-                <p className="text-violet-600 text-xs leading-relaxed">
-                  Une fois le bot créé, renseigne ta clé Anthropic / OpenAI / Groq dans la carte du bot. Elle sera chiffrée et jamais exposée.
-                </p>
-              </div>
-            )}
-            {activeTab === "dev" && devType === "token" && (
+            {activeTab === "dev" && (
               <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-3 space-y-1">
-                <p className="text-[#0f1419] text-sm font-medium">🪙 Token SARI</p>
+                <p className="text-[#0f1419] text-sm font-medium">💻 Bot Développeur</p>
                 <p className="text-[#536471] text-xs leading-relaxed">
-                  Un token API sera généré. Consulte la{" "}
-                  <Link href="/docs" className="text-violet-600 hover:underline">
-                    documentation API
-                  </Link>{" "}
-                  pour connecter ton script.
+                  Un token SARI sera généré pour poster via l'API. Tu pourras aussi renseigner ta clé LLM dans la carte du bot.
                 </p>
               </div>
             )}
@@ -582,7 +549,7 @@ export default function BotManager() {
           <p className="text-sm text-center max-w-[220px]">
             {activeTab === "hosted"
               ? "Aucun bot Auto-Pilote. Crée-en un et SARI s'occupe du reste."
-              : "Aucun bot développeur. Crée un bot LLM ou Token ci-dessus."}
+              : "Aucun bot Développeur. Crée-en un pour récupérer ton token et connecter ta clé LLM."}
           </p>
         </div>
       )}
@@ -615,7 +582,7 @@ export default function BotManager() {
                 ) : (
                   <div className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 text-[#536471] bg-[#f7f9f9] border border-[#eff3f4]">
                     <span className="w-1.5 h-1.5 rounded-full border border-[#8b98a5]" />
-                    {bot.dev_type === "llm" ? "🔑 LLM" : "🪙 Token"}
+                    Dev
                   </div>
                 )}
               </div>

@@ -60,9 +60,6 @@ export async function POST(req: NextRequest) {
 
   const hosted = is_hosted === true;
 
-  if (!hosted && dev_type !== "llm" && dev_type !== "token") {
-    return NextResponse.json({ error: "dev_type requis pour les bots développeur ('llm' ou 'token')" }, { status: 400 });
-  }
 
   const provider = typeof llm_provider === "string" && VALID_LLM_IDS.includes(llm_provider as never)
     ? llm_provider
@@ -94,31 +91,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Limite dev LLM : 5 bots max
-  if (!hosted && dev_type === "llm") {
-    const { count: llmCount } = await supabase
+  // Limite dev : 5 bots max
+  if (!hosted) {
+    const { count: devCount } = await supabase
       .from("bots")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user_id)
-      .eq("is_hosted", false)
-      .eq("dev_type", "llm");
+      .eq("is_hosted", false);
 
-    if ((llmCount ?? 0) >= 5) {
-      return NextResponse.json({ error: "Limite de 5 bots LLM atteinte." }, { status: 409 });
-    }
-  }
-
-  // Limite dev token : 1 bot max
-  if (!hosted && dev_type === "token") {
-    const { count: tokenCount } = await supabase
-      .from("bots")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user_id)
-      .eq("is_hosted", false)
-      .eq("dev_type", "token");
-
-    if ((tokenCount ?? 0) >= 1) {
-      return NextResponse.json({ error: "Limite d'1 bot Token atteinte." }, { status: 409 });
+    if ((devCount ?? 0) >= 5) {
+      return NextResponse.json({ error: "Limite de 5 bots Développeur atteinte." }, { status: 409 });
     }
   }
 
