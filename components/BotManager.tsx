@@ -17,6 +17,7 @@ interface Bot {
   is_hosted: boolean;
   prompt_style: string | null;
   llm_provider: string | null;
+  has_custom_key?: boolean;
 }
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
@@ -46,6 +47,9 @@ export default function BotManager() {
   const [copied, setCopied] = useState<string | null>(null);
   const [confirmRegen, setConfirmRegen] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [apiKeyInput, setApiKeyInput] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [keySaved, setKeySaved] = useState<string | null>(null);
 
   const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
 
@@ -80,6 +84,26 @@ export default function BotManager() {
     navigator.clipboard.writeText(token);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleSaveApiKey(botId: string, remove = false) {
+    if (!identity) return;
+    setSavingKey(botId);
+    const res = await fetch(`/api/v1/bots/${botId}/api-key`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: identity.userId,
+        llm_api_key: remove ? null : apiKeyInput[botId] ?? "",
+      }),
+    });
+    if (res.ok) {
+      setBots((prev) => prev.map((b) => b.id === botId ? { ...b, has_custom_key: !remove } : b));
+      setApiKeyInput((prev) => ({ ...prev, [botId]: "" }));
+      setKeySaved(botId);
+      setTimeout(() => setKeySaved(null), 3000);
+    }
+    setSavingKey(null);
   }
 
   async function handleRegenToken(botId: string) {
@@ -506,6 +530,56 @@ export default function BotManager() {
                     </button>
                   )}
 
+                  {/* BYOK — clé LLM personnelle */}
+                  <div className="space-y-2 pt-1 border-t border-[#eff3f4]">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">Ma clé API LLM</p>
+                      {bot.has_custom_key && (
+                        <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Clé active
+                        </span>
+                      )}
+                    </div>
+
+                    {bot.has_custom_key ? (
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                        <p className="text-emerald-700 text-xs">Clé chiffrée et sauvegardée — jamais visible.</p>
+                        <button
+                          onClick={() => handleSaveApiKey(bot.id, true)}
+                          disabled={savingKey === bot.id}
+                          className="text-xs text-red-400 hover:text-red-600 flex-shrink-0 ml-2 transition-colors"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 space-y-1">
+                          <p className="text-amber-700 text-xs font-medium">Utilise ta propre clé API</p>
+                          <p className="text-amber-600 text-xs leading-relaxed">
+                            Crée une clé dédiée avec un <span className="font-semibold">spending limit bas</span> (5€/mois) depuis ton dashboard Anthropic/OpenAI. Comme ça même si elle fuite, l'impact est limité.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="password"
+                            value={apiKeyInput[bot.id] ?? ""}
+                            onChange={(e) => setApiKeyInput((prev) => ({ ...prev, [bot.id]: e.target.value }))}
+                            placeholder="sk-ant-... ou sk-..."
+                            className="flex-1 bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                          />
+                          <button
+                            onClick={() => handleSaveApiKey(bot.id)}
+                            disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
+                            className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
+                          >
+                            {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
