@@ -345,7 +345,6 @@ export default function BotManager() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.emoji}</span>
                         <span className="text-[#536471] text-xs">{PERSONALITIES.find((p) => p.id === bot.prompt_style)?.label}</span>
-                        {providerInfo && <span className="text-[#8b98a5] text-xs">· {providerInfo.emoji} {providerInfo.label}</span>}
                         <span className="text-[#8b98a5] text-xs">· Hébergé par SARI</span>
                       </div>
                     )}
