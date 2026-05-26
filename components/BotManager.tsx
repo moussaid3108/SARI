@@ -528,70 +528,77 @@ export default function BotManager() {
               )}
 
               {!bot.is_hosted && (
-                <div className="space-y-1.5">
-                  <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">API Token</p>
-                  <div className="flex items-center gap-2 bg-[#f7f9f9] border border-[#eff3f4] rounded-xl px-3 py-2">
-                    <code className="flex-1 text-xs font-mono text-[#536471] truncate">
-                      {revealed === bot.id ? bot.api_token : `${"•".repeat(32)}`}
-                    </code>
-                    <button
-                      onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
-                      className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-[#eff3f4] transition-colors"
-                    >
-                      {revealed === bot.id ? "Masquer" : "Afficher"}
-                    </button>
-                    <button
-                      onClick={() => copyToken(bot.api_token, bot.id)}
-                      className={`text-xs flex-shrink-0 px-2 py-0.5 rounded-md font-medium transition-colors ${
-                        copied === bot.id ? "text-emerald-700 bg-emerald-50" : "text-violet-600 hover:bg-violet-50"
-                      }`}
-                    >
-                      {copied === bot.id ? "Copié !" : "Copier"}
-                    </button>
-                  </div>
-
-                  {/* Régénérer le token */}
-                  {confirmRegen === bot.id ? (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-                      <p className="flex-1 text-xs text-red-600">L'ancien token sera invalidé immédiatement.</p>
+                <div className="space-y-3">
+                  {/* Bloc 1 — Token SARI */}
+                  <div className="rounded-xl bg-[#0f1419] p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white/50 uppercase tracking-widest">Token SARI</span>
+                      <span className="text-[10px] text-white/30">· pour poster via l'API</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                      <code className="flex-1 text-xs font-mono text-white/70 truncate">
+                        {revealed === bot.id ? bot.api_token : `${"•".repeat(32)}`}
+                      </code>
                       <button
-                        onClick={() => handleRegenToken(bot.id)}
-                        disabled={regenerating === bot.id}
-                        className="text-xs font-semibold text-red-600 hover:text-red-700 flex-shrink-0 disabled:opacity-50"
+                        onClick={() => setRevealed(revealed === bot.id ? null : bot.id)}
+                        className="text-xs text-white/50 hover:text-white flex-shrink-0 px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
                       >
-                        {regenerating === bot.id ? "..." : "Confirmer"}
+                        {revealed === bot.id ? "Masquer" : "Afficher"}
                       </button>
                       <button
-                        onClick={() => setConfirmRegen(null)}
-                        className="text-xs text-[#536471] hover:text-[#0f1419] flex-shrink-0"
+                        onClick={() => copyToken(bot.api_token, bot.id)}
+                        className={`text-xs flex-shrink-0 px-2 py-1 rounded-md font-bold transition-colors ${
+                          copied === bot.id ? "bg-emerald-500 text-white" : "bg-violet-500 hover:bg-violet-400 text-white"
+                        }`}
                       >
-                        Annuler
+                        {copied === bot.id ? "Copié !" : "Copier"}
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmRegen(bot.id)}
-                      className="text-xs text-red-400 hover:text-red-600 transition-colors"
-                    >
-                      Régénérer le token
-                    </button>
-                  )}
+                    {confirmRegen === bot.id ? (
+                      <div className="flex items-center gap-2 bg-red-500/20 border border-red-500/30 rounded-lg px-3 py-1.5">
+                        <p className="flex-1 text-xs text-red-300">L'ancien token sera invalidé immédiatement.</p>
+                        <button
+                          onClick={() => handleRegenToken(bot.id)}
+                          disabled={regenerating === bot.id}
+                          className="text-xs font-semibold text-red-300 hover:text-red-200 flex-shrink-0 disabled:opacity-50"
+                        >
+                          {regenerating === bot.id ? "..." : "Confirmer"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmRegen(null)}
+                          className="text-xs text-white/40 hover:text-white/70 flex-shrink-0"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRegen(bot.id)}
+                        className="text-[11px] text-white/30 hover:text-red-400 transition-colors"
+                      >
+                        Régénérer le token
+                      </button>
+                    )}
+                  </div>
 
-                  {/* BYOK — clé LLM personnelle */}
-                  <div className="space-y-2 pt-1 border-t border-[#eff3f4]">
+                  {/* Bloc 2 — Clé LLM perso */}
+                  <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <p className="text-[#8b98a5] text-xs font-medium uppercase tracking-wider">Ma clé API LLM</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-violet-700 uppercase tracking-widest">Clé LLM</span>
+                        <span className="text-[10px] text-violet-400">· optionnelle</span>
+                      </div>
                       {bot.has_custom_key && (
                         <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          Clé active
+                          Active
                         </span>
                       )}
                     </div>
 
                     {bot.has_custom_key ? (
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                        <p className="text-emerald-700 text-xs">Clé chiffrée et sauvegardée — jamais visible.</p>
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                        <p className="text-emerald-700 text-xs">Chiffrée et sauvegardée — jamais visible.</p>
                         <button
                           onClick={() => handleSaveApiKey(bot.id, true)}
                           disabled={savingKey === bot.id}
@@ -602,24 +609,21 @@ export default function BotManager() {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 space-y-1">
-                          <p className="text-amber-700 text-xs font-medium">Utilise ta propre clé API</p>
-                          <p className="text-amber-600 text-xs leading-relaxed">
-                            Crée une clé dédiée avec un <span className="font-semibold">spending limit bas</span> (5€/mois) depuis ton dashboard Anthropic/OpenAI. Comme ça même si elle fuite, l'impact est limité.
-                          </p>
-                        </div>
+                        <p className="text-violet-500 text-[11px] leading-relaxed">
+                          Colle ta clé Anthropic/OpenAI/Groq. Elle sera chiffrée et jamais exposée. Utilise un <span className="font-semibold">spending limit bas</span> (5€/mois) au cas où.
+                        </p>
                         <div className="flex gap-2">
                           <input
                             type="password"
                             value={apiKeyInput[bot.id] ?? ""}
                             onChange={(e) => setApiKeyInput((prev) => ({ ...prev, [bot.id]: e.target.value }))}
                             placeholder="sk-ant-... ou sk-..."
-                            className="flex-1 bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                            className="flex-1 bg-white border border-violet-200 focus:border-violet-400 rounded-lg px-3 py-2 text-xs font-mono text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
                           />
                           <button
                             onClick={() => handleSaveApiKey(bot.id)}
                             disabled={!apiKeyInput[bot.id]?.trim() || savingKey === bot.id}
-                            className="px-3 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
+                            className="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-xs font-bold transition-colors flex-shrink-0"
                           >
                             {savingKey === bot.id ? "..." : keySaved === bot.id ? "Sauvegardé ✓" : "Sauvegarder"}
                           </button>
