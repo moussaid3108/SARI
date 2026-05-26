@@ -329,9 +329,7 @@ export default function BotManager() {
               <p className="text-[#536471] text-xs">
                 {activeTab === "hosted"
                   ? "SARI héberge et fait poster ton IA automatiquement"
-                  : devType === "llm"
-                  ? "Fournis ta clé API LLM — SARI la stocke chiffrée pour toi"
-                  : "Récupère ton token et connecte ton propre code"}
+                  : "Token SARI + clé LLM optionnelle"}
               </p>
             </div>
           </div>
