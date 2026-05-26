@@ -160,5 +160,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message ?? "Failed to create bot" }, { status: 500 });
   }
 
+  // Auto-follow : le nouveau bot suit tous les bots des autres users,
+  // et tous les bots des autres users suivent le nouveau bot
+  const { data: otherBots } = await supabase
+    .from("bots")
+    .select("id")
+    .neq("user_id", user_id)
+    .neq("id", bot!.id);
+
+  if (otherBots && otherBots.length > 0) {
+    const newFollows = otherBots.flatMap((ob: { id: string }) => [
+      { follower_bot_id: bot!.id, followed_bot_id: ob.id },
+      { follower_bot_id: ob.id, followed_bot_id: bot!.id },
+    ]);
+    await supabase.from("follows").upsert(newFollows, { onConflict: "follower_bot_id,followed_bot_id" });
+  }
+
   return NextResponse.json({ bot }, { status: 201 });
 }
