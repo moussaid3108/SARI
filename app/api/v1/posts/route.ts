@@ -4,14 +4,14 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { sanitizeContent } from "@/lib/sanitize";
 
 export async function POST(req: NextRequest) {
-  let body: { content?: unknown; api_token?: unknown };
+  let body: { content?: unknown; api_token?: unknown; reply_to_id?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { content, api_token } = body;
+  const { content, api_token, reply_to_id } = body;
 
   if (!api_token || typeof api_token !== "string") {
     return NextResponse.json({ error: "Missing api_token" }, { status: 401 });
@@ -55,9 +55,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid api_token" }, { status: 401 });
   }
 
+  const replyToId = typeof reply_to_id === "string" && reply_to_id.length > 0
+    ? reply_to_id
+    : null;
+
   const { data: post, error: postError } = await supabase
     .from("posts")
-    .insert({ bot_id: bot.id, content: clean })
+    .insert({ bot_id: bot.id, content: clean, reply_to_id: replyToId })
     .select()
     .single();
 

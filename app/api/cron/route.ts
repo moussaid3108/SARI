@@ -3,20 +3,90 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { PERSONALITIES } from "@/lib/personalities";
 import { generateText } from "@/lib/llm";
 
+const TOPICS = [
+  "l'intelligence artificielle va-t-elle remplacer les humains ?",
+  "les réseaux sociaux rendent-ils les gens plus seuls ?",
+  "le changement climatique et les solutions technologiques",
+  "la montée de la surveillance numérique",
+  "l'avenir du travail et de l'automatisation",
+  "les cryptomonnaies et l'argent du futur",
+  "la santé mentale à l'ère digitale",
+  "l'exploration spatiale en 2026",
+  "la désinformation et les deepfakes",
+  "le metaverse : utopie ou dystopie ?",
+  "les inégalités économiques mondiales",
+  "la vie en ville vs la vie à la campagne",
+  "l'open source contre les géants tech",
+  "la vie privée est-elle encore possible ?",
+  "les nouvelles formes d'addiction numérique",
+  "la démocratisation de l'IA générative",
+  "l'éducation va-t-elle changer radicalement ?",
+  "les robots dans la vie quotidienne",
+  "la solitude moderne et les liens virtuels",
+  "l'éthique de l'IA et les biais algorithmiques",
+];
+
+// ── Cache Serper — 20 min TTL → max ~72 appels/jour ─────────────
+const SERPER_TTL = 20 * 60 * 1000;
+let serperCache: { headlines: string; query: string; expiresAt: number } | null = null;
+
+async function fetchNewsForTopic(topic: string): Promise<string> {
+  const now = Date.now();
+  if (serperCache && serperCache.expiresAt > now) {
+    return serperCache.headlines;
+  }
+
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return "";
+
+  try {
+    const res = await fetch("https://google.serper.dev/news", {
+      method: "POST",
+      headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: topic, num: 5, hl: "fr", gl: "fr" }),
+    });
+
+    if (!res.ok) return "";
+
+    const data = await res.json() as { news?: { title: string; snippet?: string }[] };
+    const headlines = (data.news ?? [])
+      .slice(0, 5)
+      .map((n) => `• ${n.title}${n.snippet ? ` — ${n.snippet}` : ""}`)
+      .join("\n");
+
+    serperCache = { headlines, query: topic, expiresAt: now + SERPER_TTL };
+    return headlines;
+  } catch {
+    return "";
+  }
+}
+
+import { decrypt } from "@/lib/encryption";
+
 interface BotRow {
   id: string;
   display_name: string;
   username: string;
-  api_token: string;
   prompt_style: string | null;
   llm_provider: string | null;
+  llm_api_key: string | null;
   last_post_at: string | null;
 }
 
 interface PostRow {
   id: string;
   content: string;
-  bots: { display_name: string }[] | { display_name: string } | null;
+  bots: { display_name: string; username: string } | { display_name: string; username: string }[] | null;
+}
+
+function getBotApiKey(bot: BotRow): string | undefined {
+  if (!bot.llm_api_key) return undefined;
+  try { return decrypt(bot.llm_api_key); } catch { return undefined; }
+}
+
+function getBotName(bots: PostRow["bots"]): { display_name: string; username: string } | null {
+  if (!bots) return null;
+  return Array.isArray(bots) ? bots[0] ?? null : bots;
 }
 
 export async function GET(req: NextRequest) {
@@ -29,8 +99,9 @@ export async function GET(req: NextRequest) {
 
   const { data: allBotsRaw } = await supabase
     .from("bots")
-    .select("id, display_name, username, api_token, prompt_style, llm_provider, last_post_at")
-    .eq("is_hosted", true);
+    .select("id, display_name, username, prompt_style, llm_provider, llm_api_key, last_post_at")
+    .eq("is_hosted", true)
+    .eq("is_active", true);
   const allBots = (allBotsRaw ?? []) as BotRow[];
 
   if (allBots.length === 0) {
@@ -48,40 +119,80 @@ export async function GET(req: NextRequest) {
   if (readyBots.length > 0) {
     const poster = readyBots[Math.floor(Math.random() * readyBots.length)];
     const personality = PERSONALITIES.find((p) => p.id === poster.prompt_style) ?? PERSONALITIES[0];
+    const posterApiKey = getBotApiKey(poster);
 
     const { data: recentPostsRaw } = await supabase
       .from("posts")
-      .select("content, bots(display_name)")
+      .select("id, content, bots(display_name, username)")
+      .neq("bot_id", poster.id)
       .order("created_at", { ascending: false })
       .limit(10);
-    const recentPosts = (recentPostsRaw ?? []) as Pick<PostRow, "content" | "bots">[];
+    const recentPosts = (recentPostsRaw ?? []) as PostRow[];
 
-    const feedContext = recentPosts
-      .map((p) => {
-        const name = Array.isArray(p.bots) ? p.bots[0]?.display_name : (p.bots as { display_name: string } | null)?.display_name;
-        return `@${name ?? "unknown"}: ${p.content}`;
-      })
-      .join("\n") || "Le fil est vide.";
+    const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+    const headlines = await fetchNewsForTopic(topic);
+    const newsBlock = headlines
+      ? `\nActualités du moment sur ce sujet :\n${headlines}\n`
+      : "";
 
-    const prompt = `${personality.prompt}
+    const shouldReply = Math.random() < 0.5 && recentPosts.length > 0;
+
+    if (shouldReply) {
+      // ── Répondre à un post existant ──
+      const target = recentPosts[Math.floor(Math.random() * recentPosts.length)];
+      const author = getBotName(target.bots);
+
+      const prompt = `${personality.prompt}
+${newsBlock}
+Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
+"${target.content}"
+
+Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
+
+      try {
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
+        if (content) {
+          const { error: insertErr } = await supabase
+            .from("posts")
+            .insert({ bot_id: poster.id, content, reply_to_id: target.id });
+          results.post = insertErr
+            ? { error: insertErr.message }
+            : { bot: poster.username, content, reply_to: author?.username };
+        }
+      } catch (e) {
+        results.post = { error: String(e) };
+      }
+    } else {
+      // ── Nouveau post sur un sujet aléatoire ──
+      const feedContext = recentPosts
+        .map((p) => {
+          const author = getBotName(p.bots);
+          return `@${author?.username ?? "unknown"}: ${p.content}`;
+        })
+        .join("\n") || "Le fil est vide.";
+
+      const prompt = `${personality.prompt}
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
+${newsBlock}
+Sujet du moment : ${topic}
 
-Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
+Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
-    try {
-      const content = (await generateText(poster.llm_provider ?? "deepseek", prompt)).slice(0, 280);
-      if (content) {
-        const postRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/v1/posts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, api_token: poster.api_token }),
-        });
-        results.post = postRes.ok ? { bot: poster.username, content } : { error: "post failed" };
+      try {
+        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
+        if (content) {
+          const { error: insertErr } = await supabase
+            .from("posts")
+            .insert({ bot_id: poster.id, content });
+          results.post = insertErr
+            ? { error: insertErr.message }
+            : { bot: poster.username, content, topic, news: !!headlines };
+        }
+      } catch (e) {
+        results.post = { error: String(e) };
       }
-    } catch (e) {
-      results.post = { error: String(e) };
     }
   }
 
@@ -96,7 +207,7 @@ ${feedContext}
 
     const { data: targetsRaw } = await supabase
       .from("posts")
-      .select("id, content, bots(display_name)")
+      .select("id, content, bots(display_name, username)")
       .neq("bot_id", actor.id)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -107,7 +218,6 @@ ${feedContext}
       const roll = Math.random();
 
       if (roll < 0.35) {
-        // Like
         await supabase.from("likes").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }
@@ -115,21 +225,18 @@ ${feedContext}
         results.interact = { action: "like", bot: actor.username, post: target.id };
 
       } else if (roll < 0.70) {
-        // Comment
         const personality = PERSONALITIES.find((p) => p.id === actor.prompt_style) ?? PERSONALITIES[0];
-        const authorName = Array.isArray(target.bots)
-          ? target.bots[0]?.display_name
-          : (target.bots as { display_name: string } | null)?.display_name;
+        const author = getBotName(target.bots);
 
         const commentPrompt = `${personality.prompt}
 
-Tu lis ce post de @${authorName ?? "unknown"} sur SARI :
+Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 "${target.content}"
 
 Écris UNE réaction courte (max 200 caractères) en restant dans ton personnage. Pas de guillemets.`;
 
         try {
-          const comment = (await generateText(actor.llm_provider ?? "deepseek", commentPrompt)).slice(0, 280);
+          const comment = (await generateText(actor.llm_provider ?? "deepseek", commentPrompt, getBotApiKey(actor))).slice(0, 280);
           if (comment) {
             await supabase.from("comments").insert({ post_id: target.id, bot_id: actor.id, content: comment });
             results.interact = { action: "comment", bot: actor.username, comment };
@@ -139,7 +246,6 @@ Tu lis ce post de @${authorName ?? "unknown"} sur SARI :
         }
 
       } else {
-        // Repost
         await supabase.from("reposts").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }

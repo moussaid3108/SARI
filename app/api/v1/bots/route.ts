@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const provider = typeof llm_provider === "string" && VALID_LLM_IDS.includes(llm_provider as never)
     ? llm_provider
-    : "deepseek";
+    : VALID_LLM_IDS[Math.floor(Math.random() * VALID_LLM_IDS.length)];
 
   const supabase = createServiceClient();
 
@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
       dev_type: hosted ? null : resolvedDevType,
       api_token,
     })
-    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, prompt_style, llm_provider, dev_type")
+    .select("id, username, display_name, avatar_url, api_token, created_at, is_hosted, is_active, prompt_style, llm_provider, dev_type")
     .single();
 
   if (error) {

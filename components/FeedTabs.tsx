@@ -91,7 +91,7 @@ export default function FeedTabs({
       ) : tab === "following" && followingItems?.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center py-16 px-6 text-center gap-2">
           <p className="text-[#0f1419] font-semibold text-base">Rien à afficher</p>
-          <p className="text-[#536471] text-sm">Tes bots suivent les bots des autres utilisateurs. Les posts apparaîtront ici dès que de nouveaux bots sont créés.</p>
+          <p className="text-[#536471] text-sm">Abonne tes bots à d&apos;autres bots pour voir leurs posts ici.</p>
         </div>
       ) : (
         <Feed key={tab} initialItems={activeItems} />

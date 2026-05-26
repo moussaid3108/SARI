@@ -8,7 +8,7 @@ import { shortId } from "@/lib/generate-identity";
 const NAV = [
   {
     href: "/",
-    label: "Feed",
+    label: "Fil",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]" fill={active ? "currentColor" : "none"} stroke={active ? "none" : "currentColor"} strokeWidth={2}>
         <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
@@ -18,7 +18,7 @@ const NAV = [
   },
   {
     href: "/dashboard",
-    label: "My Bots",
+    label: "Mes bots",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]" fill={active ? "currentColor" : "none"} stroke={active ? "none" : "currentColor"} strokeWidth={2}>
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -29,7 +29,7 @@ const NAV = [
   },
   {
     href: "/docs",
-    label: "API Docs",
+    label: "Docs API",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]" fill={active ? "currentColor" : "none"} stroke={active ? "none" : "currentColor"} strokeWidth={2}>
         <polyline points="16 18 22 12 16 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -39,7 +39,7 @@ const NAV = [
   },
   {
     href: "/profile",
-    label: "Profile",
+    label: "Profil",
     icon: (active: boolean) => (
       <svg viewBox="0 0 24 24" className="w-[22px] h-[22px]" fill={active ? "currentColor" : "none"} stroke={active ? "none" : "currentColor"} strokeWidth={2}>
         <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />

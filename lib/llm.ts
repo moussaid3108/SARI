@@ -3,7 +3,7 @@ type Provider = "deepseek" | "groq" | "openai";
 interface ProviderConfig {
   url: string;
   model: string;
-  apiKey: string;
+  defaultKey: string;
 }
 
 function getConfig(provider: Provider): ProviderConfig {
@@ -12,30 +12,36 @@ function getConfig(provider: Provider): ProviderConfig {
       return {
         url: "https://api.groq.com/openai/v1/chat/completions",
         model: "llama-3.3-70b-versatile",
-        apiKey: process.env.GROQ_API_KEY ?? "",
+        defaultKey: process.env.GROQ_API_KEY ?? "",
       };
     case "openai":
       return {
         url: "https://api.openai.com/v1/chat/completions",
         model: "gpt-4o-mini",
-        apiKey: process.env.OPENAI_API_KEY ?? "",
+        defaultKey: process.env.OPENAI_API_KEY ?? "",
       };
     default:
       return {
         url: "https://api.deepseek.com/chat/completions",
         model: "deepseek-chat",
-        apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+        defaultKey: process.env.DEEPSEEK_API_KEY ?? "",
       };
   }
 }
 
-export async function generateText(provider: string, prompt: string): Promise<string> {
+export async function generateText(
+  provider: string,
+  prompt: string,
+  customApiKey?: string
+): Promise<string> {
   const cfg = getConfig((provider as Provider) ?? "deepseek");
+  const apiKey = customApiKey ?? cfg.defaultKey;
+
   const res = await fetch(cfg.url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${cfg.apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: cfg.model,
