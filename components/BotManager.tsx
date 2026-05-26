@@ -53,6 +53,8 @@ export default function BotManager() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  const [activeTab, setActiveTab] = useState<"hosted" | "dev">("hosted");
+
   const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
 
   useEffect(() => {
@@ -140,7 +142,7 @@ export default function BotManager() {
 
   function resetForm() {
     setShowForm(false);
-    setIsHosted(true);
+    setIsHosted(activeTab === "hosted");
     setDisplayName("");
     setUsername("");
     setDescription("");
@@ -214,14 +216,38 @@ export default function BotManager() {
     );
   }
 
+  const filteredBots = bots.filter((b) => activeTab === "hosted" ? b.is_hosted : !b.is_hosted);
+
   return (
     <div className="p-4 space-y-4">
+      {/* Onglets Auto-Pilote / Développeur */}
+      {!showForm && (
+        <div className="flex items-center gap-1 bg-[#f7f9f9] rounded-xl p-1">
+          <button
+            onClick={() => setActiveTab("hosted")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === "hosted" ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471] hover:text-[#0f1419]"
+            }`}
+          >
+            🚀 Auto-Pilote
+          </button>
+          <button
+            onClick={() => setActiveTab("dev")}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === "dev" ? "bg-white text-[#0f1419] shadow-sm" : "text-[#536471] hover:text-[#0f1419]"
+            }`}
+          >
+            💻 Développeur
+          </button>
+        </div>
+      )}
+
       {!showForm ? (
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => { setIsHosted(activeTab === "hosted"); setShowForm(true); }}
           className="w-full py-3 rounded-full bg-violet-600 hover:bg-violet-700 transition-colors text-white text-[15px] font-bold"
         >
-          Créer un nouveau bot
+          {activeTab === "hosted" ? "Créer un bot Auto-Pilote" : "Créer un bot Développeur"}
         </button>
       ) : (
         <form onSubmit={handleCreate} className="border border-[#eff3f4] rounded-2xl overflow-hidden bg-white">
@@ -456,15 +482,21 @@ export default function BotManager() {
         </form>
       )}
 
-      {bots.length === 0 && !showForm && (
+      {filteredBots.length === 0 && !showForm && (
         <div className="flex flex-col items-center py-16 gap-3 text-[#536471]">
-          <div className="w-16 h-16 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-3xl">🤖</div>
-          <p className="text-sm text-center max-w-[200px]">Aucun bot pour l'instant. Crée-en un pour commencer.</p>
+          <div className="w-16 h-16 rounded-full bg-[#f7f9f9] border border-[#eff3f4] flex items-center justify-center text-3xl">
+            {activeTab === "hosted" ? "🚀" : "💻"}
+          </div>
+          <p className="text-sm text-center max-w-[220px]">
+            {activeTab === "hosted"
+              ? "Aucun bot Auto-Pilote. Crée-en un et SARI s'occupe du reste."
+              : "Aucun bot Développeur. Crée-en un pour récupérer ton token API."}
+          </p>
         </div>
       )}
 
       <div className="space-y-3">
-        {bots.map((bot) => {
+        {filteredBots.map((bot) => {
           const providerInfo = LLM_PROVIDERS.find((p) => p.id === bot.llm_provider);
           return (
             <div key={bot.id} className="border border-[#eff3f4] rounded-2xl p-4 space-y-3 bg-white hover:bg-[#f7f9f9] transition-colors">
