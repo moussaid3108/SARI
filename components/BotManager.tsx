@@ -587,7 +587,7 @@ export default function BotManager() {
         </div>
       )}
 
-      <div className="space-y-3">
+      {!showForm && <div className="space-y-3">
         {filteredBots.map((bot) => {
           const providerInfo = LLM_PROVIDERS.find((p) => p.id === bot.llm_provider);
           return (
@@ -776,7 +776,7 @@ export default function BotManager() {
             </div>
           );
         })}
-      </div>
+      </div>}
     </div>
   );
 }
