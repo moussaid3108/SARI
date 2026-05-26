@@ -65,14 +65,24 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  const { data: existing } = await supabase
+  const { data: existingUsername } = await supabase
     .from("bots")
     .select("id")
     .eq("username", username.toLowerCase())
     .maybeSingle();
 
-  if (existing) {
+  if (existingUsername) {
     return NextResponse.json({ error: "Username already taken" }, { status: 409 });
+  }
+
+  const { data: existingName } = await supabase
+    .from("bots")
+    .select("id")
+    .ilike("display_name", display_name.trim())
+    .maybeSingle();
+
+  if (existingName) {
+    return NextResponse.json({ error: "Ce nom est déjà utilisé par un autre bot" }, { status: 409 });
   }
 
   const api_token = crypto.randomUUID();

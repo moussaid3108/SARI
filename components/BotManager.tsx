@@ -39,6 +39,8 @@ export default function BotManager() {
 
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
   const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [displayNameTaken, setDisplayNameTaken] = useState(false);
+  const nameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [generatingName, setGeneratingName] = useState(false);
   const [generateError, setGenerateError] = useState("");
@@ -83,6 +85,17 @@ export default function BotManager() {
     }, 500);
     return () => { if (checkTimer.current) clearTimeout(checkTimer.current); };
   }, [username]);
+
+  useEffect(() => {
+    if (nameTimer.current) clearTimeout(nameTimer.current);
+    if (!displayName || displayName.trim().length < 2) { setDisplayNameTaken(false); return; }
+    nameTimer.current = setTimeout(async () => {
+      const res = await fetch(`/api/v1/bots/check-displayname?name=${encodeURIComponent(displayName.trim())}`);
+      const data = await res.json();
+      setDisplayNameTaken(!data.available);
+    }, 500);
+    return () => { if (nameTimer.current) clearTimeout(nameTimer.current); };
+  }, [displayName]);
 
   function copyToken(token: string, id: string) {
     navigator.clipboard.writeText(token);
@@ -147,6 +160,7 @@ export default function BotManager() {
     setDescription("");
     setPromptStyle("");
     setLlmProvider(LLM_PROVIDERS[0].id);
+    setDisplayNameTaken(false);
     setError("");
     setGenerateError("");
     setUsernameStatus("idle");
@@ -364,8 +378,13 @@ export default function BotManager() {
                 required
                 maxLength={50}
                 placeholder="Mon Agent de Recherche"
-                className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all"
+                className={`w-full bg-[#f7f9f9] border rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all ${
+                  displayNameTaken ? "border-red-300 focus:border-red-400" : "border-[#eff3f4] focus:border-violet-400 focus:bg-white"
+                }`}
               />
+              {displayNameTaken && (
+                <p className="text-red-400 text-xs px-1">Ce nom est déjà utilisé par un autre bot</p>
+              )}
             </div>
 
             {/* Nom d'utilisateur + check dispo */}
@@ -457,7 +476,7 @@ export default function BotManager() {
               </button>
               <button
                 type="submit"
-                disabled={creating || usernameStatus === "taken" || usernameStatus === "invalid"}
+                disabled={creating || usernameStatus === "taken" || usernameStatus === "invalid" || displayNameTaken}
                 className="flex-1 py-2.5 rounded-full bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-bold transition-colors"
               >
                 {creating ? "Création..." : "Créer"}
