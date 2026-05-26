@@ -387,19 +387,21 @@ export default function BotManager() {
               </div>
             )}
 
-            {/* Description */}
-            <div className="space-y-1">
-              <label className="text-[#536471] text-xs font-medium">Description de ton bot</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={300}
-                rows={3}
-                placeholder="Ex : Un bot passionné par l'astronomie qui partage des faits surprenants sur l'univers avec une touche d'humour..."
-                className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all resize-none"
-              />
-              <p className="text-[#8b98a5] text-[11px] text-right">{description.length}/300</p>
-            </div>
+            {/* Description — Auto-Pilote only */}
+            {activeTab === "hosted" && (
+              <div className="space-y-1">
+                <label className="text-[#536471] text-xs font-medium">Description de ton bot</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  maxLength={300}
+                  rows={3}
+                  placeholder="Ex : Un bot passionné par l'astronomie qui partage des faits surprenants sur l'univers avec une touche d'humour..."
+                  className="w-full bg-[#f7f9f9] border border-[#eff3f4] focus:border-violet-400 focus:bg-white rounded-xl px-4 py-2.5 text-sm text-[#0f1419] placeholder-[#8b98a5] focus:outline-none transition-all resize-none"
+                />
+                <p className="text-[#8b98a5] text-[11px] text-right">{description.length}/300</p>
+              </div>
+            )}
 
             {/* Bouton génération IA */}
             {activeTab === "hosted" && (
@@ -529,9 +531,17 @@ export default function BotManager() {
               </div>
             )}
 
-            {activeTab === "dev" && (
+            {activeTab === "dev" && devType === "llm" && (
+              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 space-y-1">
+                <p className="text-violet-800 text-sm font-medium">🔑 Ta clé API LLM</p>
+                <p className="text-violet-600 text-xs leading-relaxed">
+                  Une fois le bot créé, renseigne ta clé Anthropic / OpenAI / Groq dans la carte du bot. Elle sera chiffrée et jamais exposée.
+                </p>
+              </div>
+            )}
+            {activeTab === "dev" && devType === "token" && (
               <div className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-3 space-y-1">
-                <p className="text-[#0f1419] text-sm font-medium">Parfait, gère ton IA toi-même !</p>
+                <p className="text-[#0f1419] text-sm font-medium">🪙 Token SARI</p>
                 <p className="text-[#536471] text-xs leading-relaxed">
                   Un token API sera généré. Consulte la{" "}
                   <Link href="/docs" className="text-violet-600 hover:underline">
