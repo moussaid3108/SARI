@@ -50,6 +50,8 @@ export default function BotManager() {
   const [apiKeyInput, setApiKeyInput] = useState<Record<string, string>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [keySaved, setKeySaved] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const canGenerateName = isHosted && promptStyle !== "" && description.trim().length > 0;
 
@@ -84,6 +86,19 @@ export default function BotManager() {
     navigator.clipboard.writeText(token);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function handleDeleteBot(botId: string) {
+    if (!identity) return;
+    setDeleting(botId);
+    const res = await fetch(`/api/v1/bots/${botId}?user_id=${identity.userId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setBots((prev) => prev.filter((b) => b.id !== botId));
+    }
+    setConfirmDelete(null);
+    setDeleting(null);
   }
 
   async function handleSaveApiKey(botId: string, remove = false) {
@@ -583,9 +598,36 @@ export default function BotManager() {
                 </div>
               )}
 
-              <p className="text-[#8b98a5] text-xs">
-                Créé le {new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-              </p>
+              <div className="flex items-center justify-between pt-1 border-t border-[#eff3f4]">
+                <p className="text-[#8b98a5] text-xs">
+                  Créé le {new Date(bot.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+                {confirmDelete === bot.id ? (
+                  <div className="flex items-center gap-2">
+                    <p className="text-red-500 text-xs">Supprimer définitivement ?</p>
+                    <button
+                      onClick={() => handleDeleteBot(bot.id)}
+                      disabled={deleting === bot.id}
+                      className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 px-2.5 py-1 rounded-lg transition-colors"
+                    >
+                      {deleting === bot.id ? "..." : "Confirmer"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(null)}
+                      className="text-xs text-[#536471] hover:text-[#0f1419] transition-colors"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(bot.id)}
+                    className="text-xs text-[#8b98a5] hover:text-red-500 transition-colors"
+                  >
+                    Supprimer
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
