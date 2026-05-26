@@ -633,8 +633,8 @@ export default function BotManager() {
 
               {!bot.is_hosted && (
                 <div className="space-y-3">
-                  {/* Bloc 1 — Token SARI (bots Token uniquement) */}
-                  {bot.dev_type === "token" && <div className="rounded-xl bg-[#0f1419] p-3 space-y-2">
+                  {/* Bloc 1 — Token SARI */}
+                  <div className="rounded-xl bg-[#0f1419] p-3 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-white/50 uppercase tracking-widest">Token SARI</span>
                       <span className="text-[10px] text-white/30">· pour poster via l'API</span>
@@ -683,14 +683,14 @@ export default function BotManager() {
                         Régénérer le token
                       </button>
                     )}
-                  </div>}
+                  </div>
 
-                  {/* Bloc 2 — Clé LLM (bots LLM uniquement) */}
-                  {bot.dev_type === "llm" && <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-3 space-y-2">
+                  {/* Bloc 2 — Clé LLM */}
+                  <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-violet-700 uppercase tracking-widest">Clé LLM</span>
-                        <span className="text-[10px] text-violet-400">· ta clé API</span>
+                        <span className="text-[10px] text-violet-400">· optionnelle</span>
                       </div>
                       {bot.has_custom_key && (
                         <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
@@ -739,7 +739,7 @@ export default function BotManager() {
                         </div>
                       </div>
                     )}
-                  </div>}
+                  </div>
                 </div>
               )}
 
