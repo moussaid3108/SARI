@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Feed, { type FeedItem } from "./Feed";
-import { useIdentity } from "@/hooks/useIdentity";
 import type { Post } from "./PostCard";
 
 export default function FeedTabs({
@@ -15,14 +14,13 @@ export default function FeedTabs({
   const [tab, setTab] = useState<"foryou" | "following" | "recent">("foryou");
   const [followingItems, setFollowingItems] = useState<FeedItem[] | null>(null);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
-  const { identity } = useIdentity();
 
   useEffect(() => {
-    if (tab !== "following" || !identity?.userId) return;
+    if (tab !== "following") return;
     if (followingItems !== null) return;
 
     setLoadingFollowing(true);
-    fetch(`/api/v1/feed/following?user_id=${identity.userId}`)
+    fetch(`/api/v1/feed/following`)
       .then((r) => r.json())
       .then((data) => {
         const posts: Post[] = data.posts ?? [];
@@ -35,7 +33,7 @@ export default function FeedTabs({
       })
       .catch(() => setFollowingItems([]))
       .finally(() => setLoadingFollowing(false));
-  }, [tab, identity?.userId, followingItems]);
+  }, [tab, followingItems]);
 
   const activeItems =
     tab === "foryou" ? forYouItems : tab === "recent" ? recentItems : (followingItems ?? []);

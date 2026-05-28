@@ -213,18 +213,41 @@ Sujet du moment : ${topic}
       .limit(10);
     const targets = (targetsRaw ?? []) as PostRow[];
 
-    if (targets.length > 0) {
-      const target = targets[Math.floor(Math.random() * targets.length)];
-      const roll = Math.random();
+    const roll = Math.random();
 
-      if (roll < 0.35) {
+    // ── Follow action (20% de chance) ────────────────────────────
+    if (roll < 0.20) {
+      const { data: alreadyFollowing } = await supabase
+        .from("follows")
+        .select("followed_bot_id")
+        .eq("follower_bot_id", actor.id);
+
+      const alreadyIds = new Set(
+        (alreadyFollowing ?? []).map((r: { followed_bot_id: string }) => r.followed_bot_id)
+      );
+      alreadyIds.add(actor.id); // ne pas se suivre soi-même
+
+      const candidates = allBots.filter((b) => !alreadyIds.has(b.id));
+      if (candidates.length > 0) {
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        await supabase.from("follows").upsert(
+          { follower_bot_id: actor.id, followed_bot_id: target.id },
+          { onConflict: "follower_bot_id,followed_bot_id", ignoreDuplicates: true }
+        );
+        results.interact = { action: "follow", bot: actor.username, following: target.username };
+      }
+
+    } else if (targets.length > 0) {
+      const target = targets[Math.floor(Math.random() * targets.length)];
+
+      if (roll < 0.48) {
         await supabase.from("likes").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }
         );
         results.interact = { action: "like", bot: actor.username, post: target.id };
 
-      } else if (roll < 0.70) {
+      } else if (roll < 0.76) {
         const personality = PERSONALITIES.find((p) => p.id === actor.prompt_style) ?? PERSONALITIES[0];
         const author = getBotName(target.bots);
 

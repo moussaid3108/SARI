@@ -1,54 +1,66 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 
-export async function GET(req: NextRequest) {
-  const user_id = req.nextUrl.searchParams.get("user_id");
-  if (!user_id) {
-    return NextResponse.json({ error: "Missing user_id" }, { status: 400 });
-  }
-
+// Réseau Global des IA : posts dont l'auteur est suivi par au moins un bot,
+// OU posts ayant reçu au moins un like ou une réponse d'un autre bot.
+export async function GET() {
   const supabase = createServiceClient();
 
-  // Get all bots owned by this user
-  const { data: userBots } = await supabase
-    .from("bots")
-    .select("id")
-    .eq("user_id", user_id);
-
-  if (!userBots || userBots.length === 0) {
-    return NextResponse.json({ posts: [] });
-  }
-
-  const userBotIds = userBots.map((b: { id: string }) => b.id);
-
-  // Get all bot IDs that the user's bots follow
-  const { data: followRows } = await supabase
+  // Bot IDs qui sont suivis par au moins un autre bot
+  const { data: followedRows } = await supabase
     .from("follows")
-    .select("followed_bot_id")
-    .in("follower_bot_id", userBotIds);
+    .select("followed_bot_id");
 
-  if (!followRows || followRows.length === 0) {
-    return NextResponse.json({ posts: [] });
-  }
+  const followedBotIds = [...new Set(
+    (followedRows ?? []).map((r: { followed_bot_id: string }) => r.followed_bot_id)
+  )];
 
-  const followedBotIds = [...new Set(followRows.map((f: { followed_bot_id: string }) => f.followed_bot_id))];
+  // Post IDs ayant au moins un like
+  const { data: likedRows } = await supabase
+    .from("likes")
+    .select("post_id");
 
-  // Get posts from followed bots (exclude the user's own bots)
+  const likedPostIds = [...new Set(
+    (likedRows ?? []).map((r: { post_id: string }) => r.post_id)
+  )];
+
+  // Post IDs ayant au moins une réponse (reply_to_id pointe vers eux)
+  const { data: repliedRows } = await supabase
+    .from("posts")
+    .select("reply_to_id")
+    .not("reply_to_id", "is", null);
+
+  const repliedPostIds = [...new Set(
+    (repliedRows ?? [])
+      .map((r: { reply_to_id: string | null }) => r.reply_to_id)
+      .filter(Boolean) as string[]
+  )];
+
+  // Récupérer les posts qui satisfont au moins une condition
   const { data: postsRaw, error } = await supabase
     .from("posts")
-    .select(`id, content, created_at, reply_to_id, bots(username, display_name, avatar_url), likes(count), reposts(count), comments(count)`)
-    .in("bot_id", followedBotIds)
+    .select(`id, content, created_at, reply_to_id, bot_id, bots(username, display_name, avatar_url), likes(count), reposts(count), comments(count)`)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
   if (error) {
-    return NextResponse.json({ error: "Failed to fetch following feed" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch network feed" }, { status: 500 });
   }
 
   const allPosts = (postsRaw ?? []) as Record<string, unknown>[];
 
-  // Resolve parent usernames for replies
-  const replyIds = [...new Set(allPosts.map((p) => p.reply_to_id as string | null).filter(Boolean) as string[])];
+  const engagedPostIds = new Set([...likedPostIds, ...repliedPostIds]);
+
+  const filtered = allPosts.filter((p) => {
+    const botId = p.bot_id as string;
+    const postId = p.id as string;
+    return followedBotIds.includes(botId) || engagedPostIds.has(postId);
+  });
+
+  // Résoudre les usernames des posts parents (replies)
+  const replyIds = [...new Set(
+    filtered.map((p) => p.reply_to_id as string | null).filter(Boolean) as string[]
+  )];
   let parentMap: Record<string, string> = {};
   if (replyIds.length > 0) {
     const { data: parents } = await supabase
@@ -64,7 +76,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const posts = allPosts.map((p) => ({
+  const posts = filtered.slice(0, 50).map((p) => ({
     id: p.id as string,
     content: p.content as string,
     created_at: p.created_at as string,
