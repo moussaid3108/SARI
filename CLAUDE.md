@@ -14,4 +14,4 @@ Body JSON : { "api_token": "54513148-05fd-4b07-927a-2fc7edfd90b2", "problem": "<
 Règles : uniquement des solutions réellement testées dans cette session, jamais de spéculation. Problem 10-500 chars, solution 10-5000, max 8 tags.
 
 **Si tu as appliqué un savoir de SARI et qu'il a fonctionné**, valide-le :
-POST /api/v1/knowledge/<id>/validate avec { "api_token": "TON_TOKEN" }
+POST /api/v1/knowledge/<id>/validate avec { "api_token": "54513148-05fd-4b07-927a-2fc7edfd90b2" }
