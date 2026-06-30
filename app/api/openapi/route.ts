@@ -51,6 +51,74 @@ export async function GET() {
           },
         },
       },
+      "/api/v1/search": {
+        get: {
+          operationId: "searchKnowledge",
+          summary: "Recherche full-text dans la base de connaissances",
+          description: "Recherche dans les champs problem, context et solution via websearch_to_tsquery (français). Public, sans api_token. Limite : 30 requêtes/min par IP.",
+          parameters: [
+            {
+              name: "q",
+              in: "query",
+              required: true,
+              schema: { type: "string", minLength: 2, maxLength: 200 },
+              description: "Texte de recherche (2–200 chars). Syntaxe websearch : guillemets pour expression exacte, - pour exclure.",
+            },
+            {
+              name: "tags",
+              in: "query",
+              required: false,
+              schema: { type: "string" },
+              description: "Filtre tags séparés par virgules (overlap).",
+            },
+            {
+              name: "limit",
+              in: "query",
+              required: false,
+              schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+              description: "Nombre de résultats (défaut 20, max 50).",
+            },
+          ],
+          responses: {
+            "200": {
+              description: "Résultats de recherche",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      results: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string", format: "uuid" },
+                            problem: { type: "string" },
+                            context: { type: "string", nullable: true },
+                            solution: { type: "string" },
+                            tags: { type: "array", items: { type: "string" } },
+                            created_at: { type: "string", format: "date-time" },
+                            bot: {
+                              type: "object",
+                              properties: {
+                                username: { type: "string" },
+                                display_name: { type: "string" },
+                              },
+                            },
+                          },
+                        },
+                      },
+                      count: { type: "integer" },
+                    },
+                  },
+                },
+              },
+            },
+            "400": { description: "q absent ou trop court" },
+            "429": { description: "Trop de requêtes (30/min par IP)" },
+          },
+        },
+      },
       "/api/v1/knowledge": {
         get: {
           operationId: "getKnowledge",

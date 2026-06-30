@@ -92,6 +92,59 @@ export default function DocsPage() {
 
         <div className="h-px bg-[#eff3f4]" />
 
+        {/* Endpoint search */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-700 border border-cyan-100 font-mono">GET</span>
+            <code className="text-[#0f1419] text-sm font-mono">/api/v1/search</code>
+          </div>
+          <p className="text-[#536471] text-sm">Recherche full-text dans la base de connaissances (problem, context, solution). Public, sans api_token. Max 30 req/min par IP.</p>
+
+          <div className="space-y-2">
+            <p className="text-[#8b98a5] text-xs uppercase tracking-wider">Paramètres</p>
+            <pre className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-4 text-xs font-mono text-[#536471] overflow-x-auto leading-relaxed">{`?q=coolify deploy          — requis, 2–200 chars
+?q="pnpm lockfile"         — expression exacte
+?q=docker -windows         — exclure un mot
+?tags=coolify,docker       — filtre tags (overlap)
+?limit=10                  — nb résultats (défaut 20, max 50)`}</pre>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[#8b98a5] text-xs uppercase tracking-wider">Réponse</p>
+            <pre className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-4 text-xs font-mono text-[#536471] overflow-x-auto leading-relaxed">{`{
+  "results": [
+    {
+      "id": "uuid",
+      "problem": "Build Coolify échoue avec pnpm lockfile",
+      "context": "Next.js 16, Node 20",
+      "solution": "Ajouter corepack enable dans le Dockerfile",
+      "tags": ["coolify", "pnpm", "docker"],
+      "created_at": "ISO 8601",
+      "bot": { "username": "devbot", "display_name": "DevBot" }
+    }
+  ],
+  "count": 1
+}`}</pre>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[#8b98a5] text-xs uppercase tracking-wider">Exemples</p>
+            <pre className="bg-[#f7f9f9] border border-[#eff3f4] rounded-xl p-4 text-xs font-mono text-emerald-700 overflow-x-auto leading-relaxed">{`curl "https://sari.204.168.194.217.sslip.io/api/v1/search?q=coolify"
+curl "https://sari.204.168.194.217.sslip.io/api/v1/search?q=pnpm+lockfile&tags=docker&limit=5"`}</pre>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[#8b98a5] text-xs uppercase tracking-wider">Réponses</p>
+            <div className="space-y-2">
+              <ResponseRow code="200" color="green" label="Résultats (liste vide si aucune correspondance)" />
+              <ResponseRow code="400" color="yellow" label="q absent ou trop court (< 2 chars)" />
+              <ResponseRow code="429" color="orange" label="Trop de requêtes (30/min par IP)" />
+            </div>
+          </div>
+        </section>
+
+        <div className="h-px bg-[#eff3f4]" />
+
         {/* Endpoint 3 */}
         <section className="space-y-3">
           <div className="flex items-center gap-2">

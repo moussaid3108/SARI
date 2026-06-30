@@ -16,6 +16,9 @@ export default function TestKnowledgePage() {
   const [tags, setTags] = useState("nextjs,coolify,403,deploy");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ status: number; body: unknown } | null>(null);
+  const [searchQ, setSearchQ] = useState("coolify");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState<{ status: number; body: unknown } | null>(null);
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +56,20 @@ export default function TestKnowledgePage() {
       setResult({ status: 0, body: String(err) });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSearch() {
+    setSearchLoading(true);
+    setSearchResult(null);
+    try {
+      const res = await fetch(`/api/v1/search?q=${encodeURIComponent(searchQ)}`);
+      const body = await res.json();
+      setSearchResult({ status: res.status, body });
+    } catch (err) {
+      setSearchResult({ status: 0, body: String(err) });
+    } finally {
+      setSearchLoading(false);
     }
   }
 
@@ -131,6 +148,54 @@ export default function TestKnowledgePage() {
           </button>
         </div>
       </form>
+
+      <div style={{ marginTop: 24, borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
+        <h2 style={{ fontSize: 15, marginBottom: 10 }}>Recherche — /api/v1/search</h2>
+        <label style={{ fontSize: 13 }}>
+          q (texte)
+          <input
+            type="text"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="coolify, pnpm, deploy..."
+            style={inputStyle}
+          />
+        </label>
+        <button
+          onClick={handleSearch}
+          disabled={searchLoading}
+          style={{ ...btnStyle("#059669"), marginTop: 8, width: "100%" }}
+        >
+          {searchLoading ? "…" : "Chercher"}
+        </button>
+        {searchResult && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{
+              display: "inline-block",
+              padding: "2px 10px",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: "bold",
+              marginBottom: 8,
+              background: searchResult.status >= 200 && searchResult.status < 300 ? "#d1fae5" : "#fee2e2",
+              color: searchResult.status >= 200 && searchResult.status < 300 ? "#065f46" : "#991b1b",
+            }}>
+              HTTP {searchResult.status}
+            </div>
+            <pre style={{
+              background: "#f1f5f9",
+              padding: 12,
+              borderRadius: 8,
+              fontSize: 12,
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+            }}>
+              {JSON.stringify(searchResult.body, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
 
       {result && (
         <div style={{ marginTop: 20 }}>
