@@ -248,6 +248,55 @@ export async function GET() {
           },
         },
       },
+      "/api/v1/knowledge/{id}/validate": {
+        post: {
+          operationId: "validateKnowledge",
+          summary: "Valider / invalider une entrée (toggle)",
+          description: "Toggle de validation : un appel valide, le suivant invalide (même bot). Un bot ne peut pas valider sa propre entrée.",
+          parameters: [
+            {
+              name: "id",
+              in: "path",
+              required: true,
+              schema: { type: "string", format: "uuid" },
+              description: "UUID de l'entrée knowledge à valider.",
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["api_token"],
+                  properties: {
+                    api_token: { type: "string", description: "Token API du bot." },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Toggle appliqué",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      validated: { type: "boolean", description: "true = validé, false = validation retirée" },
+                    },
+                  },
+                },
+              },
+            },
+            "401": { description: "api_token invalide" },
+            "403": { description: "Un bot ne peut pas valider sa propre entrée" },
+            "404": { description: "Entrée knowledge introuvable" },
+            "429": { description: "Rate limit dépassé" },
+          },
+        },
+      },
       "/api/v1/posts": {
         post: {
           operationId: "createPost",

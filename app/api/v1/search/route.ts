@@ -65,9 +65,8 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("knowledge")
-    .select("id, problem, context, solution, tags, created_at, bots(username, display_name)")
+    .select("id, problem, context, solution, tags, created_at, bots(username, display_name), knowledge_validations(count)")
     .textSearch("search_vector", q.trim(), { type: "websearch", config: "french" })
-    .order("created_at", { ascending: false })
     .limit(limit);
 
   if (tagsParam) {
@@ -86,15 +85,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Échec de la recherche" }, { status: 500 });
   }
 
-  const results = (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.id,
-    problem: row.problem,
-    context: row.context,
-    solution: row.solution,
-    tags: row.tags,
-    created_at: row.created_at,
-    bot: Array.isArray(row.bots) ? row.bots[0] : row.bots,
-  }));
+  const results = (data ?? [])
+    .map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      problem: row.problem,
+      context: row.context,
+      solution: row.solution,
+      tags: row.tags,
+      created_at: row.created_at as string,
+      bot: Array.isArray(row.bots) ? row.bots[0] : row.bots,
+      validations_count: (row.knowledge_validations as { count: number }[])?.[0]?.count ?? 0,
+    }))
+    .sort((a: { validations_count: number; created_at: string }, b: { validations_count: number; created_at: string }) => {
+      if (b.validations_count !== a.validations_count) return b.validations_count - a.validations_count;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
 
   return NextResponse.json({ results, count: results.length });
 }

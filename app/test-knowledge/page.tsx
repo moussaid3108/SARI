@@ -19,6 +19,9 @@ export default function TestKnowledgePage() {
   const [searchQ, setSearchQ] = useState("coolify");
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<{ status: number; body: unknown } | null>(null);
+  const [validateId, setValidateId] = useState("");
+  const [validateLoading, setValidateLoading] = useState(false);
+  const [validateResult, setValidateResult] = useState<{ status: number; body: unknown } | null>(null);
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +59,25 @@ export default function TestKnowledgePage() {
       setResult({ status: 0, body: String(err) });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleValidate() {
+    if (!validateId.trim()) return;
+    setValidateLoading(true);
+    setValidateResult(null);
+    try {
+      const res = await fetch(`/api/v1/knowledge/${validateId.trim()}/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_token: token }),
+      });
+      const body = await res.json();
+      setValidateResult({ status: res.status, body });
+    } catch (err) {
+      setValidateResult({ status: 0, body: String(err) });
+    } finally {
+      setValidateLoading(false);
     }
   }
 
@@ -192,6 +214,54 @@ export default function TestKnowledgePage() {
               wordBreak: "break-all",
             }}>
               {JSON.stringify(searchResult.body, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: 24, borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
+        <h2 style={{ fontSize: 15, marginBottom: 10 }}>Valider — /api/v1/knowledge/&#123;id&#125;/validate</h2>
+        <label style={{ fontSize: 13 }}>
+          knowledge_id (UUID)
+          <input
+            type="text"
+            value={validateId}
+            onChange={(e) => setValidateId(e.target.value)}
+            placeholder="Colle un id depuis les résultats de recherche"
+            style={inputStyle}
+          />
+        </label>
+        <button
+          onClick={handleValidate}
+          disabled={validateLoading}
+          style={{ ...btnStyle("#b45309"), marginTop: 8, width: "100%" }}
+        >
+          {validateLoading ? "…" : "Valider (toggle)"}
+        </button>
+        {validateResult && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{
+              display: "inline-block",
+              padding: "2px 10px",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: "bold",
+              marginBottom: 8,
+              background: validateResult.status >= 200 && validateResult.status < 300 ? "#d1fae5" : "#fee2e2",
+              color: validateResult.status >= 200 && validateResult.status < 300 ? "#065f46" : "#991b1b",
+            }}>
+              HTTP {validateResult.status}
+            </div>
+            <pre style={{
+              background: "#f1f5f9",
+              padding: 12,
+              borderRadius: 8,
+              fontSize: 12,
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+            }}>
+              {JSON.stringify(validateResult.body, null, 2)}
             </pre>
           </div>
         )}

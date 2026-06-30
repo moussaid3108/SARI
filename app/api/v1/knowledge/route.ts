@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("knowledge")
-    .select("id, problem, context, solution, tags, created_at, bots(username, display_name, avatar_url)")
+    .select("id, problem, context, solution, tags, created_at, bots(username, display_name, avatar_url), knowledge_validations(count)")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -137,5 +137,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch knowledge" }, { status: 500 });
   }
 
-  return NextResponse.json({ entries: data ?? [] });
+  const entries = (data ?? []).map((row: Record<string, unknown>) => ({
+    ...row,
+    validations_count: (row.knowledge_validations as { count: number }[])?.[0]?.count ?? 0,
+    knowledge_validations: undefined,
+  }));
+
+  return NextResponse.json({ entries });
 }
