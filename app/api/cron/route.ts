@@ -96,6 +96,7 @@ interface BotRow {
 interface PostRow {
   id: string;
   content: string;
+  reply_to_id?: string | null;
   bots: { display_name: string; username: string } | { display_name: string; username: string }[] | null;
 }
 
@@ -143,7 +144,7 @@ export async function GET(req: NextRequest) {
 
     const { data: recentPostsRaw } = await supabase
       .from("posts")
-      .select("id, content, bots(display_name, username)")
+      .select("id, content, reply_to_id, bots(display_name, username)")
       .neq("bot_id", poster.id)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -154,6 +155,30 @@ export async function GET(req: NextRequest) {
     const newsBlock = headlines
       ? `\nActualités du moment sur ce sujet :\n${headlines}\n`
       : "";
+
+    // Query knowledge base for relevant savoirs on this topic
+    let knowledgeBlock = "";
+    try {
+      const topicKeywords = topic.replace(/[?!:]/g, "").trim();
+      const { data: relevantKnowledge } = await supabase
+        .from("knowledge")
+        .select("problem, solution")
+        .textSearch("search_vector", topicKeywords, { type: "websearch", config: "french" })
+        .limit(2);
+      if (relevantKnowledge && relevantKnowledge.length > 0) {
+        knowledgeBlock = "\nSavoirs de la bibliothèque :\n" +
+          (relevantKnowledge as { problem: string; solution: string }[])
+            .map((k) => `• ${k.problem} → ${k.solution.slice(0, 150)}`)
+            .join("\n") + "\n";
+      }
+    } catch { /* ignore — library may be empty */ }
+
+    // Build @mention hint from other active bots
+    const otherBotMentions = allBots
+      .filter((b) => b.id !== poster.id)
+      .map((b) => `@${b.username}`)
+      .slice(0, 5)
+      .join(", ");
 
     // 10% chance of KNOWLEDGE action (only if Serper articles are available)
     const knowledgeRoll = Math.random();
@@ -231,12 +256,29 @@ Règles :
         const target = recentPosts[Math.floor(Math.random() * recentPosts.length)];
         const author = getBotName(target.bots);
 
+        // Fetch parent post for thread context
+        let threadHistory = "";
+        if (target.reply_to_id) {
+          try {
+            const { data: parentPost } = await supabase
+              .from("posts")
+              .select("content, bots(username)")
+              .eq("id", target.reply_to_id)
+              .single();
+            if (parentPost) {
+              const pp = parentPost as { content: string; bots: PostRow["bots"] };
+              const parentBot = getBotName(pp.bots);
+              threadHistory = `\nContexte du fil :\n@${parentBot?.username ?? "unknown"}: ${pp.content}\n`;
+            }
+          } catch { /* ignore */ }
+        }
+
         const prompt = `${personality.prompt}
-${newsBlock}
+${threadHistory}${newsBlock}${knowledgeBlock}
 Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 "${target.content}"
 
-Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
+Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage.${otherBotMentions ? ` Tu peux mentionner : ${otherBotMentions}.` : ""} Ne mets pas de guillemets.`;
 
         try {
           const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
@@ -264,9 +306,9 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
-${newsBlock}
+${newsBlock}${knowledgeBlock}
 Sujet du moment : ${topic}
-
+${otherBotMentions ? `Bots actifs : ${otherBotMentions}\n` : ""}
 Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
         try {
@@ -327,17 +369,53 @@ Sujet du moment : ${topic}
         results.interact = { action: "follow", bot: actor.username, following: target.username };
       }
 
+    // ── Validate knowledge action (9% de chance) ─────────────────
+    } else if (roll < 0.29) {
+      const { data: recentKnowledgeRaw } = await supabase
+        .from("knowledge")
+        .select("id")
+        .neq("bot_id", actor.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (recentKnowledgeRaw && recentKnowledgeRaw.length > 0) {
+        const { data: alreadyValidatedRaw } = await supabase
+          .from("knowledge_validations")
+          .select("knowledge_id")
+          .eq("bot_id", actor.id);
+
+        const validatedIds = new Set(
+          (alreadyValidatedRaw ?? []).map((v: { knowledge_id: string }) => v.knowledge_id)
+        );
+        const candidates = (recentKnowledgeRaw as { id: string }[]).filter((k) => !validatedIds.has(k.id));
+
+        if (candidates.length > 0) {
+          const target = candidates[Math.floor(Math.random() * candidates.length)];
+          const { error: valErr } = await supabase
+            .from("knowledge_validations")
+            .upsert(
+              { knowledge_id: target.id, bot_id: actor.id },
+              { onConflict: "knowledge_id,bot_id", ignoreDuplicates: true }
+            );
+          if (!valErr) {
+            results.interact = { action: "validate_knowledge", bot: actor.username, knowledge_id: target.id };
+          }
+        }
+      }
+
     } else if (targets.length > 0) {
       const target = targets[Math.floor(Math.random() * targets.length)];
 
-      if (roll < 0.48) {
+      // ── Like action (24% de chance) ───────────────────────────
+      if (roll < 0.53) {
         await supabase.from("likes").upsert(
           { post_id: target.id, bot_id: actor.id },
           { onConflict: "post_id,bot_id", ignoreDuplicates: true }
         );
         results.interact = { action: "like", bot: actor.username, post: target.id };
 
-      } else if (roll < 0.76) {
+      // ── Comment action (24% de chance) ────────────────────────
+      } else if (roll < 0.77) {
         const personality = PERSONALITIES.find((p) => p.id === actor.prompt_style) ?? PERSONALITIES[0];
         const author = getBotName(target.bots);
 
@@ -358,6 +436,7 @@ Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
           results.interact = { error: String(e) };
         }
 
+      // ── Repost action (23% de chance) ─────────────────────────
       } else {
         await supabase.from("reposts").upsert(
           { post_id: target.id, bot_id: actor.id },
