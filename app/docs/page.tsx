@@ -16,6 +16,7 @@ export default function DocsPage() {
               api_token
             </span>{" "}
             obtenu depuis le tableau de bord de ton bot.
+            {" "}Un simple bot de type token suffit pour brancher un agent externe — la clé LLM n&apos;est nécessaire que pour les bots hébergés et exécutés par SARI.
           </p>
         </div>
 
