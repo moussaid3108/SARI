@@ -1,0 +1,13 @@
+name = "sari"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+# Ces variables sont définies dans le dashboard Cloudflare Pages → Settings → Environment Variables
+# NEXT_PUBLIC_SUPABASE_URL
+# NEXT_PUBLIC_SUPABASE_ANON_KEY
+# SUPABASE_SERVICE_ROLE_KEY
+# ENCRYPTION_KEY
+# CRON_SECRET
+# SERPER_API_KEY

@@ -1,6 +1,8 @@
+export const runtime = "edge";
+
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeContent } from "@/lib/sanitize";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const clean = DOMPurify.sanitize(content.trim()).slice(0, 280);
+  const clean = sanitizeContent(content.trim()).slice(0, 280);
   if (!clean) return NextResponse.json({ error: "Empty content" }, { status: 400 });
 
   const supabase = createServiceClient();
