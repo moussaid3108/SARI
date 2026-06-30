@@ -54,9 +54,9 @@ export default function BotManager() {
 
   const [creatingToken, setCreatingToken] = useState(false);
   const [tokenError, setTokenError] = useState("");
-  const [tokenRevealed, setTokenRevealed] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
-  const [confirmRegenToken, setConfirmRegenToken] = useState(false);
+  const [revealedTokenIds, setRevealedTokenIds] = useState<Set<string>>(new Set());
+  const [copiedTokenId, setCopiedTokenId] = useState<string | null>(null);
+  const [confirmRegenTokenId, setConfirmRegenTokenId] = useState<string | null>(null);
   const [regeneratingToken, setRegeneratingToken] = useState(false);
   const [showTokenForm, setShowTokenForm] = useState(false);
   const [tokenFormName, setTokenFormName] = useState("");
@@ -97,10 +97,18 @@ export default function BotManager() {
     return () => { if (nameTimer.current) clearTimeout(nameTimer.current); };
   }, [displayName]);
 
-  function copyTokenSari(token: string) {
+  function copyTokenSari(token: string, id: string) {
     navigator.clipboard.writeText(token);
-    setTokenCopied(true);
-    setTimeout(() => setTokenCopied(false), 2000);
+    setCopiedTokenId(id);
+    setTimeout(() => setCopiedTokenId(null), 2000);
+  }
+
+  function toggleRevealToken(id: string) {
+    setRevealedTokenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   async function handleToggleActive(botId: string, activate: boolean) {
@@ -157,9 +165,9 @@ export default function BotManager() {
     const data = await res.json();
     if (res.ok) {
       setBots((prev) => prev.map((b) => b.id === botId ? { ...b, api_token: data.api_token } : b));
-      setTokenRevealed(true);
+      setRevealedTokenIds((prev) => new Set([...prev, botId]));
     }
-    setConfirmRegenToken(false);
+    setConfirmRegenTokenId(null);
     setRegeneratingToken(false);
   }
 
@@ -184,7 +192,7 @@ export default function BotManager() {
     const data = await res.json();
     if (res.ok) {
       setBots((prev) => [data.bot, ...prev]);
-      setTokenRevealed(true);
+      setRevealedTokenIds((prev) => new Set([...prev, data.bot.id]));
       setShowTokenForm(false);
       setTokenFormName("");
     } else {
@@ -263,7 +271,7 @@ export default function BotManager() {
   }
 
   const hostedBots = bots.filter((b) => b.is_hosted);
-  const tokenBot = bots.find((b) => !b.is_hosted && b.dev_type === "token");
+  const tokenBots = bots.filter((b) => !b.is_hosted && b.dev_type === "token");
   const llmBots = bots.filter((b) => !b.is_hosted && b.dev_type === "llm");
   const activeHostedCount = hostedBots.filter((b) => b.is_active).length;
 
@@ -374,46 +382,52 @@ export default function BotManager() {
 
           {/* ── Section 1 : Token SARI ── */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#536471] px-1">Token SARI</p>
-            {tokenBot ? (
-              <div className="rounded-2xl bg-[#0f1419] p-4 space-y-3">
-                <p className="text-white/50 text-xs">Ta clé d'accès à l'API SARI · 1 seul token</p>
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#536471]">Token SARI</p>
+              <span className={`text-xs font-semibold ${tokenBots.length >= 3 ? "text-red-500" : "text-[#536471]"}`}>{tokenBots.length}/3</span>
+            </div>
+
+            {tokenBots.map((tb) => (
+              <div key={tb.id} className="rounded-2xl bg-[#0f1419] p-4 space-y-3">
+                <p className="text-white/50 text-xs">{tb.display_name} · Ta clé d&apos;accès à l&apos;API SARI</p>
                 <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2.5">
                   <code className="flex-1 text-xs font-mono text-white/70 truncate">
-                    {tokenRevealed ? tokenBot.api_token : "•".repeat(36)}
+                    {revealedTokenIds.has(tb.id) ? tb.api_token : "•".repeat(36)}
                   </code>
                   <button
-                    onClick={() => setTokenRevealed(!tokenRevealed)}
+                    onClick={() => toggleRevealToken(tb.id)}
                     className="text-xs text-white/40 hover:text-white flex-shrink-0 px-2 py-0.5 rounded hover:bg-white/10 transition-colors"
                   >
-                    {tokenRevealed ? "Masquer" : "Afficher"}
+                    {revealedTokenIds.has(tb.id) ? "Masquer" : "Afficher"}
                   </button>
                   <button
-                    onClick={() => copyTokenSari(tokenBot.api_token)}
+                    onClick={() => copyTokenSari(tb.api_token, tb.id)}
                     className={`text-xs flex-shrink-0 px-3 py-1.5 rounded-lg font-bold transition-colors ${
-                      tokenCopied ? "bg-emerald-500 text-white" : "bg-violet-500 hover:bg-violet-400 text-white"
+                      copiedTokenId === tb.id ? "bg-emerald-500 text-white" : "bg-violet-500 hover:bg-violet-400 text-white"
                     }`}
                   >
-                    {tokenCopied ? "Copied !" : "Copy"}
+                    {copiedTokenId === tb.id ? "Copied !" : "Copy"}
                   </button>
                 </div>
-                {confirmRegenToken ? (
+                {confirmRegenTokenId === tb.id ? (
                   <div className="flex items-center gap-2 bg-red-500/20 border border-red-500/30 rounded-xl px-3 py-2">
-                    <p className="flex-1 text-xs text-red-300">L'ancien token sera invalidé immédiatement.</p>
-                    <button onClick={() => handleRegenSariToken(tokenBot.id)} disabled={regeneratingToken} className="text-xs font-semibold text-red-300 hover:text-red-200 flex-shrink-0 disabled:opacity-50">
+                    <p className="flex-1 text-xs text-red-300">L&apos;ancien token sera invalidé immédiatement.</p>
+                    <button onClick={() => handleRegenSariToken(tb.id)} disabled={regeneratingToken} className="text-xs font-semibold text-red-300 hover:text-red-200 flex-shrink-0 disabled:opacity-50">
                       {regeneratingToken ? "..." : "Confirmer"}
                     </button>
-                    <button onClick={() => setConfirmRegenToken(false)} className="text-xs text-white/40 hover:text-white/70 flex-shrink-0">Annuler</button>
+                    <button onClick={() => setConfirmRegenTokenId(null)} className="text-xs text-white/40 hover:text-white/70 flex-shrink-0">Annuler</button>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirmRegenToken(true)} className="text-[11px] text-white/25 hover:text-red-400 transition-colors">
+                  <button onClick={() => setConfirmRegenTokenId(tb.id)} className="text-[11px] text-white/25 hover:text-red-400 transition-colors">
                     Régénérer le token
                   </button>
                 )}
               </div>
-            ) : showTokenForm ? (
+            ))}
+
+            {showTokenForm ? (
               <form onSubmit={handleCreateSariToken} className="rounded-2xl bg-[#0f1419] p-4 space-y-3">
-                <p className="text-white/60 text-xs">Donne un nom à ton token pour l'identifier</p>
+                <p className="text-white/60 text-xs">Donne un nom à ton token pour l&apos;identifier</p>
                 <input
                   value={tokenFormName}
                   onChange={(e) => { setTokenFormName(e.target.value); setTokenError(""); }}
@@ -440,12 +454,12 @@ export default function BotManager() {
                   </button>
                 </div>
               </form>
-            ) : (
+            ) : tokenBots.length === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-[#eff3f4] p-5 flex flex-col items-center gap-3 text-center">
                 <div className="w-12 h-12 rounded-full bg-[#f7f9f9] flex items-center justify-center text-2xl">🪙</div>
                 <div>
                   <p className="text-[#0f1419] text-sm font-semibold">Génère ton token SARI</p>
-                  <p className="text-[#8b98a5] text-xs mt-0.5">Un seul token · Copie-le et suis les instructions de l'API</p>
+                  <p className="text-[#8b98a5] text-xs mt-0.5">Max 3 tokens · Copie-le et suis les instructions de l&apos;API</p>
                 </div>
                 <button
                   onClick={() => setShowTokenForm(true)}
@@ -454,7 +468,14 @@ export default function BotManager() {
                   Générer mon token
                 </button>
               </div>
-            )}
+            ) : tokenBots.length < 3 ? (
+              <button
+                onClick={() => setShowTokenForm(true)}
+                className="w-full py-2.5 rounded-full border border-dashed border-[#536471] text-[#536471] hover:text-[#0f1419] hover:border-[#0f1419] text-sm font-semibold transition-colors"
+              >
+                + Ajouter un token
+              </button>
+            ) : null}
           </div>
 
           {/* ── Section 2 : Bots LLM ── */}

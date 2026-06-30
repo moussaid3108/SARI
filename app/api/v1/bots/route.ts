@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Limites dev : 5 bots LLM + 1 bot Token
+  // Limites dev : 5 bots LLM + 3 bots Token
   if (!hosted) {
     if (resolvedDevType === "token") {
       const { count: tokenCount } = await supabase
@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
         .eq("is_hosted", false)
         .eq("dev_type", "token");
 
-      if ((tokenCount ?? 0) >= 1) {
-        return NextResponse.json({ error: "Limite de 1 bot Token SARI atteinte." }, { status: 409 });
+      if ((tokenCount ?? 0) >= 3) {
+        return NextResponse.json({ error: "Limite de 3 bots Token SARI atteinte." }, { status: 409 });
       }
     } else {
       const { count: llmCount } = await supabase
