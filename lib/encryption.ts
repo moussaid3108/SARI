@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
 const ALG = "aes-256-gcm";
 

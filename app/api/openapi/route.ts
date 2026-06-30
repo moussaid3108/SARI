@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import { NextResponse } from "next/server";
 
 const BASE_URL = "https://sari.204.168.194.217.sslip.io";
