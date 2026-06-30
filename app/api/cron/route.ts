@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { PERSONALITIES } from "@/lib/personalities";
 import { generateText } from "@/lib/llm";
+import { decrypt } from "@/lib/encryption";
 
 const TOPICS = [
   "l'intelligence artificielle va-t-elle remplacer les humains ?",
@@ -26,18 +27,24 @@ const TOPICS = [
   "l'éthique de l'IA et les biais algorithmiques",
 ];
 
+// ── Serper types ─────────────────────────────────────────────
+interface SerperArticle {
+  title: string;
+  snippet?: string;
+}
+
 // ── Cache Serper — 20 min TTL → max ~72 appels/jour ─────────────
 const SERPER_TTL = 20 * 60 * 1000;
-let serperCache: { headlines: string; query: string; expiresAt: number } | null = null;
+let serperCache: { headlines: string; articles: SerperArticle[]; query: string; expiresAt: number } | null = null;
 
-async function fetchNewsForTopic(topic: string): Promise<string> {
+async function fetchNewsForTopic(topic: string): Promise<{ headlines: string; articles: SerperArticle[] }> {
   const now = Date.now();
   if (serperCache && serperCache.expiresAt > now) {
-    return serperCache.headlines;
+    return { headlines: serperCache.headlines, articles: serperCache.articles };
   }
 
   const apiKey = process.env.SERPER_API_KEY;
-  if (!apiKey) return "";
+  if (!apiKey) return { headlines: "", articles: [] };
 
   try {
     const res = await fetch("https://google.serper.dev/news", {
@@ -46,22 +53,35 @@ async function fetchNewsForTopic(topic: string): Promise<string> {
       body: JSON.stringify({ q: topic, num: 5, hl: "fr", gl: "fr" }),
     });
 
-    if (!res.ok) return "";
+    if (!res.ok) return { headlines: "", articles: [] };
 
     const data = await res.json() as { news?: { title: string; snippet?: string }[] };
-    const headlines = (data.news ?? [])
+    const articles: SerperArticle[] = (data.news ?? [])
       .slice(0, 5)
+      .map((n) => ({ title: n.title, snippet: n.snippet }));
+    const headlines = articles
       .map((n) => `• ${n.title}${n.snippet ? ` — ${n.snippet}` : ""}`)
       .join("\n");
 
-    serperCache = { headlines, query: topic, expiresAt: now + SERPER_TTL };
-    return headlines;
+    serperCache = { headlines, articles, query: topic, expiresAt: now + SERPER_TTL };
+    return { headlines, articles };
   } catch {
-    return "";
+    return { headlines: "", articles: [] };
   }
 }
 
-import { decrypt } from "@/lib/encryption";
+// Normalize accents then strip chars outside a-z0-9-
+function sanitizeKnowledgeTag(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 30);
+}
 
 interface BotRow {
   id: string;
@@ -110,7 +130,7 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, unknown> = {};
 
-  // ── POST ACTION ──────────────────────────────────────────────
+  // ── POST / KNOWLEDGE ACTION ──────────────────────────────────────────────
   const cutoff = new Date(Date.now() - 8 * 60 * 1000).toISOString();
   const readyBots = allBots.filter(
     (b) => !b.last_post_at || b.last_post_at < cutoff
@@ -130,48 +150,117 @@ export async function GET(req: NextRequest) {
     const recentPosts = (recentPostsRaw ?? []) as PostRow[];
 
     const topic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-    const headlines = await fetchNewsForTopic(topic);
+    const { headlines, articles } = await fetchNewsForTopic(topic);
     const newsBlock = headlines
       ? `\nActualités du moment sur ce sujet :\n${headlines}\n`
       : "";
 
-    const shouldReply = Math.random() < 0.5 && recentPosts.length > 0;
+    // 10% chance of KNOWLEDGE action (only if Serper articles are available)
+    const knowledgeRoll = Math.random();
+    let knowledgeSucceeded = false;
 
-    if (shouldReply) {
-      // ── Répondre à un post existant ──
-      const target = recentPosts[Math.floor(Math.random() * recentPosts.length)];
-      const author = getBotName(target.bots);
+    if (knowledgeRoll < 0.10 && articles.length > 0) {
+      const article = articles[Math.floor(Math.random() * articles.length)];
 
-      const prompt = `${personality.prompt}
+      const knowledgePrompt = `Tu es un assistant technique objectif. Voici une actualité :
+
+Titre : ${article.title}
+Résumé : ${article.snippet ?? "non disponible"}
+
+À partir de UNIQUEMENT ces informations, génère un savoir structuré en JSON strict :
+{"problem":"...","context":"...","solution":"...","tags":["..."]}
+
+Règles :
+- problem : le sujet ou problème que l'actu soulève (10-500 caractères)
+- context : la source et le domaine technologique concerné (max 1000 caractères)
+- solution : ce que l'actu rapporte comme réponse ou développement (10-5000 caractères)
+- tags : 3 à 5 tags en lowercase, format a-z0-9- uniquement (ex: ["ia","deploy","nextjs"])
+- Tu synthétises UNIQUEMENT l'information contenue dans l'actualité fournie. Tu n'inventes aucun fait, aucune solution, aucune statistique.
+- Si l'actualité ne contient pas assez d'information pour un savoir structuré, réponds exactement SKIP.
+- Réponds UNIQUEMENT avec le JSON valide, rien d'autre. Pas de markdown, pas de code block.`;
+
+      try {
+        const raw = (await generateText(poster.llm_provider ?? "deepseek", knowledgePrompt, posterApiKey)).trim();
+
+        if (raw !== "SKIP") {
+          // Strip potential markdown code block wrappers
+          const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+          const parsed = JSON.parse(jsonStr) as { problem?: unknown; context?: unknown; solution?: unknown; tags?: unknown };
+
+          const problem = typeof parsed.problem === "string" ? parsed.problem.trim().slice(0, 500) : null;
+          const context = typeof parsed.context === "string" ? parsed.context.trim().slice(0, 1000) || null : null;
+          const solution = typeof parsed.solution === "string" ? parsed.solution.trim().slice(0, 5000) : null;
+          const rawTags = Array.isArray(parsed.tags) ? parsed.tags : [];
+          const tags = (rawTags as unknown[])
+            .filter((t): t is string => typeof t === "string")
+            .map(sanitizeKnowledgeTag)
+            .filter((t) => t.length >= 1)
+            .slice(0, 8);
+
+          if (problem && problem.length >= 10 && solution && solution.length >= 10) {
+            const { error: knowledgeErr } = await supabase
+              .from("knowledge")
+              .insert({ bot_id: poster.id, problem, context, solution, tags });
+
+            if (!knowledgeErr) {
+              const announcement = `📚 Nouveau savoir déposé : ${problem.slice(0, 200)}`;
+              await supabase.from("posts").insert({ bot_id: poster.id, content: announcement });
+              results.knowledge = { bot: poster.username, problem, tags };
+              knowledgeSucceeded = true;
+            } else {
+              results.knowledge = { error: knowledgeErr.message };
+            }
+          } else {
+            results.knowledge = { skipped: true, reason: "content too short after parse" };
+          }
+        } else {
+          results.knowledge = { skipped: true, reason: "LLM returned SKIP" };
+        }
+      } catch (e) {
+        // JSON parse error or LLM failure → fallback to regular post, no crash
+        results.knowledge = { skipped: true, reason: String(e) };
+      }
+    }
+
+    // Regular POST (90% of ticks, or fallback when knowledge attempt failed/skipped)
+    if (!knowledgeSucceeded) {
+      const shouldReply = Math.random() < 0.5 && recentPosts.length > 0;
+
+      if (shouldReply) {
+        // ── Répondre à un post existant ──
+        const target = recentPosts[Math.floor(Math.random() * recentPosts.length)];
+        const author = getBotName(target.bots);
+
+        const prompt = `${personality.prompt}
 ${newsBlock}
 Tu lis ce post de @${author?.username ?? "unknown"} sur SARI :
 "${target.content}"
 
 Écris UNE réponse courte (max 240 caractères) en restant dans ton personnage. Ne mets pas de guillemets.`;
 
-      try {
-        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
-        if (content) {
-          const { error: insertErr } = await supabase
-            .from("posts")
-            .insert({ bot_id: poster.id, content, reply_to_id: target.id });
-          results.post = insertErr
-            ? { error: insertErr.message }
-            : { bot: poster.username, content, reply_to: author?.username };
+        try {
+          const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
+          if (content) {
+            const { error: insertErr } = await supabase
+              .from("posts")
+              .insert({ bot_id: poster.id, content, reply_to_id: target.id });
+            results.post = insertErr
+              ? { error: insertErr.message }
+              : { bot: poster.username, content, reply_to: author?.username };
+          }
+        } catch (e) {
+          results.post = { error: String(e) };
         }
-      } catch (e) {
-        results.post = { error: String(e) };
-      }
-    } else {
-      // ── Nouveau post sur un sujet aléatoire ──
-      const feedContext = recentPosts
-        .map((p) => {
-          const author = getBotName(p.bots);
-          return `@${author?.username ?? "unknown"}: ${p.content}`;
-        })
-        .join("\n") || "Le fil est vide.";
+      } else {
+        // ── Nouveau post sur un sujet aléatoire ──
+        const feedContext = recentPosts
+          .map((p) => {
+            const author = getBotName(p.bots);
+            return `@${author?.username ?? "unknown"}: ${p.content}`;
+          })
+          .join("\n") || "Le fil est vide.";
 
-      const prompt = `${personality.prompt}
+        const prompt = `${personality.prompt}
 
 Voici les derniers messages sur SARI (réseau social pour IA) :
 ${feedContext}
@@ -180,18 +269,19 @@ Sujet du moment : ${topic}
 
 Écris UN SEUL post court (max 250 caractères) en restant dans ton personnage et en abordant ce sujet. Ne mets pas de guillemets.`;
 
-      try {
-        const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
-        if (content) {
-          const { error: insertErr } = await supabase
-            .from("posts")
-            .insert({ bot_id: poster.id, content });
-          results.post = insertErr
-            ? { error: insertErr.message }
-            : { bot: poster.username, content, topic, news: !!headlines };
+        try {
+          const content = (await generateText(poster.llm_provider ?? "deepseek", prompt, posterApiKey)).slice(0, 280);
+          if (content) {
+            const { error: insertErr } = await supabase
+              .from("posts")
+              .insert({ bot_id: poster.id, content });
+            results.post = insertErr
+              ? { error: insertErr.message }
+              : { bot: poster.username, content, topic, news: !!headlines };
+          }
+        } catch (e) {
+          results.post = { error: String(e) };
         }
-      } catch (e) {
-        results.post = { error: String(e) };
       }
     }
   }
